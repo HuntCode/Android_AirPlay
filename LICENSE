@@ -1,0 +1,13 @@
+License description:
+
+src/main/cpp/lib/crypto/*           - New BSD License
+src/main/cpp/lib/curve25519/*       - New BSD License (http://code.google.com/p/curve25519-donna/)
+src/main/cpp/lib/ed25519/*          - MIT License (https://github.com/orlp/ed25519)
+src/main/cpp/lib/fdk-aac/*          - https://github.com/mstorsjo/fdk-aac/blob/master/NOTICE
+src/main/cpp/lib/playfair/*         - GPL License
+src/main/cpp/lib/plist/*            - LGPLv2.1+ License
+src/main/cpp/lib/http_parser.*      - MIT License
+src/main/cpp/lib/*                  - LGPLv2.1+ License
+src/main/cpp/mDNSResponder/*        - Apache License 2.0
+src/main/java/com/apple/dnssd/*     - Apache License 2.0
+src/main/java/*                     - MIT License

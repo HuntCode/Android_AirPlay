@@ -1,0 +1,116 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "build_raop",
+					"childIndexes" : 
+					[
+						2
+					],
+					"jsonFile" : "directory-build_raop-Debug-846ea1673bd7f0fa9295.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/lib",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "build_raop/build_mdns",
+					"jsonFile" : "directory-build_raop.build_mdns-Debug-9eb647590cec2bd29233.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/mDNSResponder",
+					"targetIndexes" : 
+					[
+						1
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2
+					],
+					"name" : "Project",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "airplay::@49c19032a5bd8a891ea0",
+					"jsonFile" : "target-airplay-Debug-f75708560a8dff49eb25.json",
+					"name" : "airplay",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "dns_sd::@a955259836325659df9c",
+					"jsonFile" : "target-dns_sd-Debug-0a387f6a1736d62a1d0c.json",
+					"name" : "dns_sd",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "raopserver_android::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-raopserver_android-Debug-58a21c3f716974bd29dc.json",
+					"name" : "raopserver_android",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/android/example/app/.cxx/Debug/4u6x3n5u/arm64-v8a",
+		"source" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/android/example/app"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

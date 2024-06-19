@@ -1,0 +1,266 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						8
+					]
+				},
+				{
+					"build" : "build_raop",
+					"childIndexes" : 
+					[
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"jsonFile" : "directory-build_raop-Debug-c06e1d4cbc33cfefe9dc.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib",
+					"targetIndexes" : 
+					[
+						7
+					]
+				},
+				{
+					"build" : "build_raop/build_mdns",
+					"jsonFile" : "directory-build_raop.build_mdns-Debug-40dee8eb46be0dc2cbcf.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/third_party/mDNSResponder",
+					"targetIndexes" : 
+					[
+						4
+					]
+				},
+				{
+					"build" : "build_raop/crypto",
+					"jsonFile" : "directory-build_raop.crypto-Debug-eaf9bc7903fe4181addd.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib/crypto",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "build_raop/curve25519",
+					"jsonFile" : "directory-build_raop.curve25519-Debug-4f0274be38036d6eca60.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib/curve25519",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "build_raop/ed25519",
+					"jsonFile" : "directory-build_raop.ed25519-Debug-155f74ff0162c18bb5d1.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib/ed25519",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "build_raop/playfair",
+					"jsonFile" : "directory-build_raop.playfair-Debug-2eab6639d1025506c9e6.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib/playfair",
+					"targetIndexes" : 
+					[
+						5
+					]
+				},
+				{
+					"build" : "build_raop/plist",
+					"jsonFile" : "directory-build_raop.plist-Debug-7bd9af2b1508b0b618f3.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/lib/plist",
+					"targetIndexes" : 
+					[
+						6
+					]
+				},
+				{
+					"build" : "build_raop/fdk_out",
+					"jsonFile" : "directory-build_raop.fdk_out-Debug-683096befa61c8764444.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.4.1"
+					},
+					"parentIndex" : 1,
+					"projectIndex" : 0,
+					"source" : "C:/A_ReserveLand/AirplayServerEX/third_party/fdk-aac",
+					"targetIndexes" : 
+					[
+						3
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					],
+					"name" : "Project",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 3,
+					"id" : "crypto::@4accfc545f61231d0a66",
+					"jsonFile" : "target-crypto-Debug-a0a0246b63d4f146dece.json",
+					"name" : "crypto",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "curve25519::@8ca6311d35cde9f98195",
+					"jsonFile" : "target-curve25519-Debug-51222a0124ed15716aa3.json",
+					"name" : "curve25519",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "ed25519::@da15b58989102f927439",
+					"jsonFile" : "target-ed25519-Debug-a84366ba351737dfd83e.json",
+					"name" : "ed25519",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 8,
+					"id" : "fdk-aac::@27a668b8b40e86644158",
+					"jsonFile" : "target-fdk-aac-Debug-ba62b641f196d7683df5.json",
+					"name" : "fdk-aac",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "jdns_sd::@a955259836325659df9c",
+					"jsonFile" : "target-jdns_sd-Debug-faa9d0e3a1c9d31628da.json",
+					"name" : "jdns_sd",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 6,
+					"id" : "playfair::@34210a15fb406f400819",
+					"jsonFile" : "target-playfair-Debug-c8b94060ce7e1ebe044b.json",
+					"name" : "playfair",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 7,
+					"id" : "plist::@1546bb74020af4a35538",
+					"jsonFile" : "target-plist-Debug-4f73bddf9f26eaac8618.json",
+					"name" : "plist",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "raopserver::@49c19032a5bd8a891ea0",
+					"jsonFile" : "target-raopserver-Debug-3788449c4c1cf6397dfc.json",
+					"name" : "raopserver",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "raopserver_android::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-raopserver_android-Debug-0b97014e1923bb507273.json",
+					"name" : "raopserver_android",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/A_ReserveLand/AirplayServerEX/android/example/app/.cxx/Debug/43172k4g/armeabi-v7a",
+		"source" : "C:/A_ReserveLand/AirplayServerEX/android/example/app"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

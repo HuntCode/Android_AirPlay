@@ -1,0 +1,109 @@
+{
+  "buildFiles": [
+    "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\crypto\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\curve25519\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\ed25519\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\playfair\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\lib\\plist\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\third_party\\fdk-aac\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\AirplayServerEX\\third_party\\mDNSResponder\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "crypto::@4accfc545f61231d0a66": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "crypto",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a\\build_raop\\crypto\\libcrypto.a"
+    },
+    "curve25519::@8ca6311d35cde9f98195": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "curve25519",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a\\build_raop\\curve25519\\libcurve25519.a"
+    },
+    "ed25519::@da15b58989102f927439": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "ed25519",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a\\build_raop\\ed25519\\libed25519.a"
+    },
+    "fdk-aac::@27a668b8b40e86644158": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "fdk-aac",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libfdk-aac.so",
+      "runtimeFiles": []
+    },
+    "jdns_sd::@a955259836325659df9c": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "jdns_sd",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libjdns_sd.so",
+      "runtimeFiles": []
+    },
+    "playfair::@34210a15fb406f400819": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "playfair",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a\\build_raop\\playfair\\libplayfair.a"
+    },
+    "plist::@1546bb74020af4a35538": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "plist",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\.cxx\\Debug\\43172k4g\\armeabi-v7a\\build_raop\\plist\\libplist.a"
+    },
+    "raopserver::@49c19032a5bd8a891ea0": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "raopserver",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libraopserver.so",
+      "runtimeFiles": [
+        "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libfdk-aac.so",
+        "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libjdns_sd.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\21\\liblog.so"
+      ]
+    },
+    "raopserver_android::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "raopserver_android",
+      "output": "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libraopserver_android.so",
+      "runtimeFiles": [
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\21\\liblog.so",
+        "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libraopserver.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\21\\liblog.so",
+        "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libfdk-aac.so",
+        "C:\\A_ReserveLand\\AirplayServerEX\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\43172k4g\\obj\\armeabi-v7a\\libjdns_sd.so"
+      ]
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

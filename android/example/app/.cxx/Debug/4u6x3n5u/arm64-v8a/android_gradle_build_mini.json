@@ -1,0 +1,51 @@
+{
+  "buildFiles": [
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\lib\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\third_party\\mDNSResponder\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\.cxx\\Debug\\4u6x3n5u\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\.cxx\\Debug\\4u6x3n5u\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "dns_sd::@a955259836325659df9c": {
+      "artifactName": "dns_sd",
+      "abi": "arm64-v8a",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so",
+      "runtimeFiles": []
+    },
+    "airplay::@49c19032a5bd8a891ea0": {
+      "artifactName": "airplay",
+      "abi": "arm64-v8a",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libairplay.so",
+      "runtimeFiles": [
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\distribution\\plist\\lib\\arm64-v8a\\libplist.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so"
+      ]
+    },
+    "raopserver_android::@6890427a1f51a3e7e1df": {
+      "artifactName": "raopserver_android",
+      "abi": "arm64-v8a",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libraopserver_android.so",
+      "runtimeFiles": [
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libairplay.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\distribution\\plist\\lib\\arm64-v8a\\libplist.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so"
+      ]
+    }
+  }
+}
