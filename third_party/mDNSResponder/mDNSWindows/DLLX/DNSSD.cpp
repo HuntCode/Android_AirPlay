@@ -643,7 +643,7 @@ CDNSSD::ResolveReply
 			record->AddRef();
 
 			char buf[ 64 ];
-			snprintf( buf, sizeof( buf ), "txtLen = %d", txtLen );
+			sprintf( buf, "txtLen = %d", txtLen );
 			OutputDebugStringA( buf );
 
 			if ( txtLen > 0 )

@@ -28,7 +28,7 @@
 
 #include "DLLStub.h"
 
-static int		g_defaultErrorCode = kDNSServiceErr_ServiceNotRunning;
+static int		g_defaultErrorCode = kDNSServiceErr_Unknown;
 static DLLStub	g_glueLayer;
 
 
@@ -80,12 +80,12 @@ DLLStub::GetProcAddress( FARPROC * func, LPCSTR lpProcName )
 }
 
 
-dnssd_sock_t DNSSD_API
+int DNSSD_API
 DNSServiceRefSockFD(DNSServiceRef sdRef)
 {
 	typedef int (DNSSD_API * Func)(DNSServiceRef sdRef);
 	static Func func = NULL;
-	int ret = INVALID_SOCKET;
+	int ret = -1;
 
 	if ( DLLStub::GetProcAddress( ( FARPROC* ) &func, __FUNCTION__ ) )
 	{

@@ -21,7 +21,7 @@ DNSSDDirect.c/.h
 	to perform all the real work of the DNS-SD API. This code does not rely
 	on any platform-specifics so it should run on any platform with an mDNS
 	platform plugin available. Software that cannot or does not want to use
-	the IPC mechanism (e.g. Windows CE, etc.) can use this code 
+	the IPC mechanism (e.g. Windows CE, VxWorks, etc.) can use this code 
 	directly without any of the IPC pieces.
 
 RMxClient.c/.h

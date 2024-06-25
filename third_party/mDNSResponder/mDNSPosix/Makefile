@@ -1,6 +1,6 @@
 # -*- tab-width: 4 -*-
 #
-# Copyright (c) 2002-2018 Apple Inc. All rights reserved.
+# Copyright (c) 2002-2004, Apple Computer, Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without 
 # modification, are permitted provided that the following conditions are met:
@@ -30,8 +30,8 @@
 # If "make os=xxx" gives lots of errors like "Missing dependency operator",
 # then try typing "gmake os=xxx" instead.
 #
-# This Makefile builds an mDNSResponder daemon and a libdns_sd.so shared library
-# for Linux. It also builds several example programs for embedded systems.
+# This Makefile builds an mDNSResponder daemon and a libdns_sd.so shared library 
+# for Linux. It also builds several example programs for embedded systems. 
 #
 # Make with no arguments to build all production targets.
 # 'make DEBUG=1' to build debugging targets.
@@ -52,27 +52,16 @@ LIBVERS = 1
 
 COREDIR = ../mDNSCore
 SHAREDDIR ?= ../mDNSShared
-PROXYDIR ?= ../mDNSProxy
-POSIXDIR ?= ../mDNSPosix
 JDK = /usr/jdk
 
-SYSTEM := $(shell uname -s)
-ifeq ($(SYSTEM), Darwin)
-  os=x
-else ifeq ($(SYSTEM), Linux)
-  os=linux
-endif
-
-CC = cc
-BISON = bison
-FLEX = flex
-ST = strip
-LD = ld
-SOOPTS = -shared
+CC = @cc
+BISON = @bison
+FLEX = @flex
+LD = ld -shared
 CP = cp
 RM = rm
 LN = ln -s -f
-CFLAGS_COMMON = -I$(COREDIR) -I$(SHAREDDIR) -I$(PROXYDIR) -I$(OBJDIR) -fwrapv -W -Wall -DPID_FILE=\"/var/run/mdnsd.pid\" -DMDNS_UDS_SERVERPATH=\"/var/run/mdnsd\"
+CFLAGS_COMMON = -I$(COREDIR) -I$(SHAREDDIR) -I$(OBJDIR) -fwrapv -W -Wall -DPID_FILE=\"/var/run/mdnsd.pid\" -DMDNS_UDS_SERVERPATH=\"/var/run/mdnsd\"
 CFLAGS_PTHREAD =
 LINKOPTS =
 LINKOPTS_PTHREAD = -lpthread
@@ -80,48 +69,40 @@ LDSUFFIX = so
 JAVACFLAGS_OS = -fPIC -shared -ldns_sd
 
 # Set up diverging paths for debug vs. prod builds
-ifeq "$(DEBUG)" "1"
-CFLAGS_DEBUGGING = -g -DMDNS_DEBUGMSGS=2
+DEBUG=0
+ifeq ($(DEBUG),1)
+CFLAGS_DEBUG = -g -DMDNS_DEBUGMSGS=2 
 OBJDIR = objects/debug
 BUILDDIR = build/debug
-STRIP = echo
-else
-ifeq "$(DEBUGSYMS)" "1"
-CFLAGS_DEBUGGING = -g -DMDNS_DEBUGMSGS=0
-OBJDIR = objects/prod
-BUILDDIR = build/prod
-STRIP = echo
+STRIP = echo 
 else
 # We use -Os for two reasons:
 # 1. We want to make small binaries, suitable for putting into hardware devices
 # 2. Some of the code analysis warnings only work when some form of optimization is enabled
-CFLAGS_DEBUGGING = -g -DMDNS_DEBUGMSGS=0
+CFLAGS_DEBUG = -Os -DMDNS_DEBUGMSGS=0 
 OBJDIR ?= objects/prod
 BUILDDIR ?= build/prod
-STRIP = $(ST) -S
-endif
+STRIP = strip -S 
 endif
 
 # Configure per-OS peculiarities
 ifeq ($(os),solaris)
-CFLAGS_DEBUGGING = -O0 -DMDNS_DEBUGMSGS=0
+CFLAGS_DEBUG = -O0 -DMDNS_DEBUGMSGS=0
 CFLAGS_OS = -DNOT_HAVE_DAEMON -DNOT_HAVE_SA_LEN -DNOT_HAVE_SOCKLEN_T -DNOT_HAVE_IF_NAMETOINDEX \
 	 -DLOG_PERROR=0 -D_XPG4_2 -D__EXTENSIONS__ -DHAVE_BROKEN_RECVIF_NAME -DTARGET_OS_SOLARIS
 CC = gcc
-LD = gcc
-SOOPTS = -shared
+LD = gcc -shared
 LINKOPTS = -lsocket -lnsl -lresolv
 JAVACFLAGS_OS += -I$(JDK)/include/solaris
 ifneq ($(DEBUG),1)
-STRIP = $(ST)
+STRIP = strip
 endif
 else
 
 # any target that contains the string "linux"
 ifeq ($(findstring linux,$(os)),linux)
-CFLAGS_OS = -D_GNU_SOURCE -DHAVE_IPV6 -DNOT_HAVE_SA_LEN -DUSES_NETLINK -DHAVE_LINUX -DTARGET_OS_LINUX -ftabstop=4
-LD = $(CC)
-SOOPTS = -shared
+CFLAGS_OS = -D_GNU_SOURCE -DHAVE_IPV6 -DNOT_HAVE_SA_LEN -DUSES_NETLINK -DHAVE_LINUX -DTARGET_OS_LINUX -fno-strict-aliasing
+LD = gcc -shared
 FLEXFLAGS_OS = -l
 JAVACFLAGS_OS += -I$(JDK)/include/linux
 
@@ -164,20 +145,17 @@ ifeq ($(os),x)
 # we get build failures: ‘daemon’ is deprecated (declared at /usr/include/stdlib.h:283)
 CFLAGS_OS = -DHAVE_IPV6 -no-cpp-precomp -Werror -Wdeclaration-after-statement \
 	-D__MAC_OS_X_VERSION_MIN_REQUIRED=__MAC_OS_X_VERSION_10_4 \
-	-DHAVE_STRLCPY=1 -DTARGET_OS_MAC \
 	-D__APPLE_USE_RFC_2292 #-Wunreachable-code
 CC = gcc
-LD = $(CC)
-SOOPTS = -dynamiclib
+LD = $(CC) -dynamiclib
 LINKOPTS = -lSystem
 LDSUFFIX = dylib
 JDK = /System/Library/Frameworks/JavaVM.framework/Home
-JAVACFLAGS_OS = -dynamiclib -I/System/Library/Frameworks/JavaVM.framework/Headers -framework JavaVM
-OPTIONALTARG = dnsextd
+JAVACFLAGS_OS = -dynamiclib -I/System/Library/Frameworks/JavaVM.framework/Headers -framework JavaVM 
 else
 
 $(error ERROR: Must specify target OS on command-line, e.g. "make os=x [target]".\
-Supported operating systems include: x, linux, linux-uclibc, netbsd, freebsd, openbsd, solaris)
+Supported operating systems include: x, linux, linux-uclibc, netbsd, freebsd, openbsd, solaris) 
 endif
 endif
 endif
@@ -193,7 +171,6 @@ NSSINSTPATH := /lib
 
 # If not otherwise defined, we install into /usr/lib and /usr/include
 # and our startup script is called mdns (e.g. /etc/init.d/mdns)
-ETCBASE?=/etc
 INSTBASE?=/usr
 STARTUPSCRIPTNAME?=mdns
 
@@ -233,13 +210,13 @@ endif
 endif
 endif
 
-MDNSCFLAGS = $(CFLAGS) $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUGGING)
+CFLAGS = $(CFLAGS_COMMON) $(CFLAGS_OS) $(CFLAGS_DEBUG)
 
 #############################################################################
 
-all: setup Relay Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder Identify NetMonitor $(OPTIONALTARG)
+all: setup Daemon libdns_sd Clients SAClient SAResponder SAProxyResponder Identify NetMonitor dnsextd $(OPTIONALTARG)
 
-install: setup InstalledStartup InstalledDaemon InstalledRelay InstalledLib InstalledManPages InstalledClients $(OPTINSTALL)
+install: setup InstalledDaemon InstalledStartup InstalledLib InstalledManPages InstalledClients $(OPTINSTALL)
 
 # 'setup' sets up the build directory structure the way we want
 setup:
@@ -257,31 +234,18 @@ clean:
 # daemon target builds the daemon
 DAEMONOBJS = $(OBJDIR)/PosixDaemon.c.o $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP.c.o $(OBJDIR)/mDNS.c.o \
              $(OBJDIR)/DNSDigest.c.o $(OBJDIR)/uDNS.c.o $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/uds_daemon.c.o \
-             $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/dnssd_ipc.c.o $(OBJDIR)/GenLinkedList.c.o $(OBJDIR)/PlatformCommon.c.o \
-			 $(OBJDIR)/CryptoAlg.c.o $(OBJDIR)/RelayInterface.c.o $(OBJDIR)/cfParse.c.o $(OBJDIR)/RelayProtocol.c.o \
-			 $(OBJDIR)/RelayClient.c.o $(OBJDIR)/DSO.c.o
-
-# daemon target builds the daemon
-RELAYOBJS =  $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP.c.o $(OBJDIR)/PlatformCommon.c.o \
-             $(OBJDIR)/DNSDigest.c.o $(OBJDIR)/DNSCommon.c.o \
-             $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/GenLinkedList.c.o \
-			 $(OBJDIR)/CryptoAlg.c.o $(OBJDIR)/RelayProtocol.c.o $(OBJDIR)/cfParse.c.o  $(OBJDIR)/DSO.c.o
+             $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/dnssd_ipc.c.o $(OBJDIR)/GenLinkedList.c.o $(OBJDIR)/PlatformCommon.c.o 
 
 # dnsextd target build dnsextd
 DNSEXTDOBJ = $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP.c.o $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/GenLinkedList.c.o $(OBJDIR)/DNSDigest.c.o \
-             $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/PlatformCommon.c.o $(OBJDIR)/dnsextd_parser.y.o $(OBJDIR)/dnsextd_lexer.l.o \
-			 $(OBJDIR)/CryptoAlg.c.o $(OBJDIR)/RelayInterface.c.o $(OBJDIR)/cfParse.c.o $(OBJDIR)/RelayProtocol.c.o \
-			 $(OBJDIR)/RelayClient.c.o $(OBJDIR)/DSO.c.o
-
-Relay: setup $(BUILDDIR)/mdnsrelayd $(BUILDDIR)/relaytest
-	@echo "Relay daemon done"
+             $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/PlatformCommon.c.o $(OBJDIR)/dnsextd_parser.y.o $(OBJDIR)/dnsextd_lexer.l.o
 
 Daemon: setup $(BUILDDIR)/mdnsd
 	@echo "Responder daemon done"
 
 $(BUILDDIR)/mdnsd: $(DAEMONOBJS)
 	$(CC) -o $@ $+ $(LINKOPTS)
-	$(STRIP) $@
+	@$(STRIP) $@
 
 # libdns_sd target builds the client library
 libdns_sd: setup $(BUILDDIR)/libdns_sd.$(LDSUFFIX)
@@ -290,29 +254,26 @@ libdns_sd: setup $(BUILDDIR)/libdns_sd.$(LDSUFFIX)
 CLIENTLIBOBJS = $(OBJDIR)/dnssd_clientlib.c.so.o $(OBJDIR)/dnssd_clientstub.c.so.o $(OBJDIR)/dnssd_ipc.c.so.o
 
 $(BUILDDIR)/libdns_sd.$(LDSUFFIX): $(CLIENTLIBOBJS)
-	$(LD) $(SOOPTS) $(LINKOPTS) -o $@ $+
-	$(STRIP) $@
+	@$(LD) $(LINKOPTS) -o $@ $+
+	@$(STRIP) $@
 
 Clients: setup libdns_sd ../Clients/build/dns-sd
 	@echo "Clients done"
 
-../Clients/build/dns-sd: ../Clients/dns-sd.c
-	$(MAKE) -C ../Clients DEBUG=$(DEBUG) SUPMAKE_CFLAGS="$(MDNSCFLAGS)"
+../Clients/build/dns-sd:
+	@$(MAKE) -C ../Clients
 
 # nss_mdns target builds the Name Service Switch module
 nss_mdns: setup $(BUILDDIR)/$(NSSLIBFILE)
 	@echo "Name Service Switch module done"
 
 $(BUILDDIR)/$(NSSLIBFILE): $(CLIENTLIBOBJS) $(OBJDIR)/nss_mdns.c.so.o
-	$(LD) $(SOOPTS) $(LINKOPTS) -o $@ $+
-	$(STRIP) $@
+	@$(LD) $(LINKOPTS) -o $@ $+
+	@$(STRIP) $@
 
 #############################################################################
 
 # The Install targets place built stuff in their proper places
-InstalledRelay: $(INSTBASE)/sbin/mdnsrelayd
-	@echo $+ " installed"
-
 InstalledDaemon: $(INSTBASE)/sbin/mdnsd
 	@echo $+ " installed"
 
@@ -332,29 +293,27 @@ InstalledNSS: $(NSSINSTPATH)/$(NSSLINKNAME) /etc/nss_mdns.conf $(MANPATH)/man5/n
 	@echo $+ " installed"
 
 # Note: If daemon already installed, we make sure it's stopped before overwriting it
-$(INSTBASE)/sbin/mdnsd: $(BUILDDIR)/mdnsd $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME)
-	if test -x $@; then $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) stop; fi
-	$(CP) $< $@
-	$(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) start
-
-# Note: If daemon already installed, we make sure it's stopped before overwriting it
-$(INSTBASE)/sbin/mdnsrelayd: $(BUILDDIR)/mdnsrelayd
+$(INSTBASE)/sbin/mdnsd: $(BUILDDIR)/mdnsd
+	@if test -x $@; then $(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME) stop; fi
 	$(CP) $< $@
 
 $(INSTBASE)/lib/libdns_sd.$(LDSUFFIX).$(LIBVERS): $(BUILDDIR)/libdns_sd.$(LDSUFFIX)
 	$(CP) $< $@
 	$(LN) $@ $(INSTBASE)/lib/libdns_sd.$(LDSUFFIX)
 ifdef LDCONFIG
-	# -m means 'merge into existing database', -R means 'rescan directories'
+    # -m means 'merge into existing database', -R means 'rescan directories'
 	$(LDCONFIG) -mR
 endif
 
 $(INSTBASE)/include/dns_sd.h: $(SHAREDDIR)/dns_sd.h
 	$(CP) $< $@
 
-$(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME): mdnsd.sh $(STARTUPSCRIPTDIR)
+# We make this target dependent on $(INSTBASE)/sbin/mdnsd because we need to ensure
+# that the daemon is installed *before* we try to execute the command to start it.
+$(STARTUPSCRIPTDIR)/$(STARTUPSCRIPTNAME): mdnsd.sh $(STARTUPSCRIPTDIR) $(INSTBASE)/sbin/mdnsd
 	$(CP) $< $@
 	chmod ugo+x $@
+	$@ start
 ifdef RUNLEVELSCRIPTSDIR
 ifeq ($(wildcard $(RUNLEVELSCRIPTSDIR)/runlevels/default), $(RUNLEVELSCRIPTSDIR)/runlevels/default)
 	$(LN) $@ $(RUNLEVELSCRIPTSDIR)/runlevels/default/mdns
@@ -394,8 +353,8 @@ $(NSSINSTPATH)/$(NSSLIBFILE): $(BUILDDIR)/$(NSSLIBFILE)
 /etc/nss_mdns.conf: nss_mdns.conf
 	$(CP) $< $@
 	chmod 444 $@
-# Check the nsswitch.conf file.
-# If 'mdns' does not already appear on the "hosts:" line, then add it right before 'dns'
+	# Check the nsswitch.conf file.
+	# If 'mdns' does not already appear on the "hosts:" line, then add it right before 'dns'
 	cp -f /etc/nsswitch.conf /etc/nsswitch.conf.pre-mdns
 	sed -e '/mdns/!s/^\(hosts:.*\)dns\(.*\)/\1mdns dns\2/' /etc/nsswitch.conf.pre-mdns > /etc/nsswitch.conf
 
@@ -408,11 +367,11 @@ JAVAC = $(JDK)/bin/javac
 JAVAH = $(JDK)/bin/javah
 JAVADOC = $(JDK)/bin/javadoc
 JAR = $(JDK)/bin/jar
-JAVACFLAGS = $(MDNSCFLAGS) $(JAVACFLAGS_OS) -I$(JDK)/include
+JAVACFLAGS = $(CFLAGS) $(JAVACFLAGS_OS) -I$(JDK)/include
 
 JavaForXcode_: setup $(BUILDDIR)/dns_sd.jar $(PROJECT_DERIVED_FILE_DIR)/DNSSD.java.h
 	@echo $@ done
-
+	
 $(PROJECT_DERIVED_FILE_DIR)/DNSSD.java.h: $(OBJDIR)/DNSSD.java.h
 	@if test ! -d $(PROJECT_DERIVED_FILE_DIR) ; then mkdir -p $(PROJECT_DERIVED_FILE_DIR) ; fi
 	$(CP) $< $@
@@ -484,9 +443,7 @@ JavaDoc: Java setup
 
 # The following targets build embedded example programs
 SPECIALOBJ = $(OBJDIR)/mDNSPosix.c.o $(OBJDIR)/mDNSUNP.c.o $(OBJDIR)/mDNSDebug.c.o $(OBJDIR)/GenLinkedList.c.o \
-	$(OBJDIR)/DNSDigest.c.o $(OBJDIR)/uDNS.c.o $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/PlatformCommon.c.o \
-	$(OBJDIR)/CryptoAlg.c.o $(OBJDIR)/RelayInterface.c.o $(OBJDIR)/cfParse.c.o $(OBJDIR)/RelayProtocol.c.o \
-	$(OBJDIR)/RelayClient.c.o $(OBJDIR)/DSO.c.o
+	$(OBJDIR)/DNSDigest.c.o $(OBJDIR)/uDNS.c.o $(OBJDIR)/DNSCommon.c.o $(OBJDIR)/PlatformCommon.c.o
 COMMONOBJ  = $(SPECIALOBJ) $(OBJDIR)/mDNS.c.o
 APPOBJ     = $(COMMONOBJ) $(OBJDIR)/ExampleClientApp.c.o
 
@@ -530,46 +487,34 @@ $(OBJDIR)/NetMonitor.c.o:            $(COREDIR)/mDNS.c # Note: NetMonitor.c text
 $(BUILDDIR)/dnsextd:                 $(DNSEXTDOBJ) $(OBJDIR)/dnsextd.c.threadsafe.o
 	$(CC) $+ -o $@ $(LINKOPTS) $(LINKOPTS_PTHREAD)
 
-$(BUILDDIR)/mdnsrelayd:                  $(RELAYOBJS) $(OBJDIR)/mDNSRelay.c.o $(OBJDIR)/RelayShim.c.o
-	$(CC) $+ -o $@ $(LINKOPTS)
-
-$(BUILDDIR)/relaytest:                  $(RELAYOBJS) $(OBJDIR)/RelayClient.c.o $(OBJDIR)/RelayTest.c.o
-	$(CC) $+ -o $@ $(LINKOPTS)
-
-$(OBJDIR)/RelayTest.c.o:	$(PROXYDIR)/RelayShim.c
-	$(CC) $(MDNSCFLAGS) -c -o $@ $< -I$(POSIXDIR) -DRELAY_TEST_MAIN=1
-
 #############################################################################
 
 # Implicit rules
 $(OBJDIR)/%.c.o:	%.c
-	$(CC) $(MDNSCFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.c.o:	$(COREDIR)/%.c
-	$(CC) $(MDNSCFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.c.o:	$(SHAREDDIR)/%.c
-	$(CC) $(MDNSCFLAGS) -c -o $@ $<
-
-$(OBJDIR)/%.c.o:	$(PROXYDIR)/%.c
-	$(CC) $(MDNSCFLAGS) -I$(POSIXDIR) -c -o $@ $< # Note: including POSIXDIR is a hack, take it out when layering is fixed.
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.c.threadsafe.o:	%.c
-	$(CC) $(MDNSCFLAGS) $(MDNSCFLAGS_PTHREAD) -D_REENTRANT -c -o $@ $<
+	$(CC) $(CFLAGS) $(CFLAGS_PTHREAD) -D_REENTRANT -c -o $@ $<
 
 $(OBJDIR)/%.c.threadsafe.o:	$(SHAREDDIR)/%.c
-	$(CC) $(MDNSCFLAGS) $(MDNSCFLAGS_PTHREAD) -D_REENTRANT -c -o $@ $<
+	$(CC) $(CFLAGS) $(CFLAGS_PTHREAD) -D_REENTRANT -c -o $@ $<
 
 $(OBJDIR)/%.c.so.o:	%.c
-	$(CC) $(MDNSCFLAGS) -c -fPIC -o $@ $<
+	$(CC) $(CFLAGS) -c -fPIC -o $@ $<
 
 $(OBJDIR)/%.c.so.o:	$(SHAREDDIR)/%.c
-	$(CC) $(MDNSCFLAGS) -c -fPIC -o $@ $<
+	$(CC) $(CFLAGS) -c -fPIC -o $@ $<
 
 $(OBJDIR)/%.y.o: $(SHAREDDIR)/%.y
 	$(BISON)              -o $(OBJDIR)/$*.c -d $<
-	$(CC) $(MDNSCFLAGS) -c -o $@ $(OBJDIR)/$*.c
+	$(CC) $(CFLAGS) -c -o $@ $(OBJDIR)/$*.c
 
 $(OBJDIR)/%.l.o: $(SHAREDDIR)/%.l
 	$(FLEX) $(FLEXFLAGS_OS) -i             -o$(OBJDIR)/$*.l.c $<
-	$(CC) $(MDNSCFLAGS) -Wno-error -c -o $@ $(OBJDIR)/$*.l.c
+	$(CC) $(CFLAGS) -Wno-error -c -o $@ $(OBJDIR)/$*.l.c

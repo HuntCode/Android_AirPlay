@@ -1,8 +1,8 @@
 /* -*- Mode: C; tab-width: 4 -*-
  *
- * Copyright (c) 2008-2011 Apple Inc. All rights reserved.
+ * Copyright (c) 2008 Apple Inc. All rights reserved.
  *
- * Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple Inc.
+ * Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple Computer, Inc.
  * ("Apple") in consideration of your agreement to the following terms, and your
  * use, installation, modification or redistribution of this Apple software
  * constitutes acceptance of these terms.  If you do not agree with these terms,
@@ -16,7 +16,7 @@
  * the Apple Software in its entirety and without modifications, you must retain
  * this notice and the following text and disclaimers in all such redistributions of
  * the Apple Software.  Neither the name, trademarks, service marks or logos of
- * Apple Inc. may be used to endorse or promote products derived from the
+ * Apple Computer, Inc. may be used to endorse or promote products derived from the
  * Apple Software without specific prior written permission from Apple.  Except as
  * expressly stated in this notice, no other rights or licenses, express or implied,
  * are granted by Apple herein, including but not limited to any patent rights that
@@ -39,38 +39,37 @@
  */
 
 #include <ctype.h>
-#include <stdio.h>          // For stdout, stderr
+#include <stdio.h>			// For stdout, stderr
 
 #include "ClientCommon.h"
 
 const char *GetNextLabel(const char *cstr, char label[64])
-{
-    char *ptr = label;
-    while (*cstr && *cstr != '.')               // While we have characters in the label...
-    {
-        char c = *cstr++;
-        if (c == '\\')                          // If escape character, check next character
-        {
-            if (*cstr == '\0') break;           // If this is the end of the string, then break
-            c = *cstr++;
-            if (isdigit(cstr[-1]) && isdigit(cstr[0]) && isdigit(cstr[1]))
-            {
-                int v0 = cstr[-1] - '0';                        // then interpret as three-digit decimal
-                int v1 = cstr[ 0] - '0';
-                int v2 = cstr[ 1] - '0';
-                int val = v0 * 100 + v1 * 10 + v2;
-                // If valid three-digit decimal value, use it
-                // Note that although ascii nuls are possible in DNS labels
-                // we're building a C string here so we have no way to represent that
-                if (val == 0) val = '-';
-                if (val <= 255) { c = (char)val; cstr += 2; }
-            }
-        }
-        *ptr++ = c;
-        if (ptr >= label+64) { label[63] = 0; return(NULL); }   // Illegal label more than 63 bytes
-    }
-    *ptr = 0;                                                   // Null-terminate label text
-    if (ptr == label) return(NULL);                             // Illegal empty label
-    if (*cstr) cstr++;                                          // Skip over the trailing dot (if present)
-    return(cstr);
-}
+	{
+	char *ptr = label;
+	while (*cstr && *cstr != '.')				// While we have characters in the label...
+		{
+		char c = *cstr++;
+		if (c == '\\' && *cstr)					// If we have a backslash, and it's not the last character of the string
+			{
+			c = *cstr++;
+			if (isdigit(cstr[-1]) && isdigit(cstr[0]) && isdigit(cstr[1]))
+				{
+				int v0 = cstr[-1] - '0';						// then interpret as three-digit decimal
+				int v1 = cstr[ 0] - '0';
+				int v2 = cstr[ 1] - '0';
+				int val = v0 * 100 + v1 * 10 + v2;
+				// If valid three-digit decimal value, use it
+				// Note that although ascii nuls are possible in DNS labels
+				// we're building a C string here so we have no way to represent that
+				if (val == 0) val = '-';
+				if (val <= 255) { c = (char)val; cstr += 2; }
+				}
+			}
+		*ptr++ = c;
+		if (ptr >= label+64) { label[63] = 0; return(NULL); }	// Illegal label more than 63 bytes
+		}
+	*ptr = 0;													// Null-terminate label text
+	if (ptr == label) return(NULL);								// Illegal empty label
+	if (*cstr) cstr++;											// Skip over the trailing dot (if present)
+	return(cstr);
+	}

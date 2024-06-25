@@ -227,8 +227,8 @@ CConfigPropertySheet::DecodeDomainName( const char * raw, CString & decoded )
     for (i = 0; i < labels; i++)
 	{
 		buffer = (char *)GetNextLabel(buffer, nextLabel);
-        strcat_s(decodedDomainString, sizeof(decodedDomainString), nextLabel);
-        strcat_s(decodedDomainString, sizeof(decodedDomainString), ".");
+        strcat(decodedDomainString, nextLabel);
+        strcat(decodedDomainString, ".");
     }
     
     // Remove trailing dot from domain name.

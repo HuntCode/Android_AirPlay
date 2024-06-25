@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-add_definitions(-DHAVE_LIBDL )
+#add_definitions(-DHAVE_LIBDL )
 add_definitions(-DHAS_HH_RENDERER )
 
 set(distribution_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../distribution)
 
 set(MDNS_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/mDNSResponder)
-#set(FDK_AAC_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/fdk-aac)
+set(FDK_AAC_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/fdk-aac)
 
 add_subdirectory(${MDNS_LIB_PATH} build_mdns)
-#add_subdirectory(${FDK_AAC_LIB_PATH} fdk_out)
+add_subdirectory(${FDK_AAC_LIB_PATH} fdk_out)
 
 include_directories(
         ${FDK_AAC_LIB_PATH}/libAACdec/include
@@ -114,6 +114,12 @@ set_target_properties(
         PROPERTIES
         IMPORTED_LOCATION ${distribution_DIR}/openssl/lib/${ANDROID_ABI}/libssl.a)
 
+#add_library(dns_sd SHARED IMPORTED)
+#set_target_properties(
+#        dns_sd
+#        PROPERTIES
+#        IMPORTED_LOCATION ${distribution_DIR}/mdns/lib/${ANDROID_ABI}/libjdns_sd.so)
+
 if(ANDROID)
     find_library( log-lib
             log )
@@ -121,7 +127,7 @@ if(ANDROID)
             crypto
 			ssl
             plist
-            #fdk-aac
+            fdk-aac
             dns_sd
             ${log-lib})
 else()
@@ -133,7 +139,7 @@ else()
             playfair
             plist
             fdk-aac
-            jdns_sd
+            dns_sd
             ws2_32)
 endif()
 

@@ -1,6 +1,6 @@
 /* -*- Mode: C; tab-width: 4 -*-
  *
- * Copyright (c) 2002-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (c) 2002-2004 Apple Computer, Inc. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +23,6 @@
 
 */
 
-#define _CRT_RAND_S
-
 #include	<stdarg.h>
 #include	<stddef.h>
 #include	<stdio.h>
@@ -32,7 +30,6 @@
 #include	<crtdbg.h>
 #include	<string.h>
 
-#include	"Poll.h"
 #include	"CommonServices.h"
 #include	"DebugServices.h"
 #include	"Firewall.h"
@@ -52,8 +49,6 @@
 #include	"GenLinkedList.h"
 #include	"DNSCommon.h"
 #include	"mDNSWin32.h"
-#include    "dnssec.h"
-#include    "nsec.h"
 
 #if 0
 #pragma mark == Constants ==
@@ -106,6 +101,7 @@ mDNSlocal int				getifaddrs( struct ifaddrs **outAddrs );
 mDNSlocal void				freeifaddrs( struct ifaddrs *inAddrs );
 
 
+
 // Platform Accessors
 
 #ifdef	__cplusplus
@@ -123,24 +119,6 @@ struct	mDNSPlatformInterfaceInfo
 mDNSexport mStatus	mDNSPlatformInterfaceNameToID( mDNS * const inMDNS, const char *inName, mDNSInterfaceID *outID );
 mDNSexport mStatus	mDNSPlatformInterfaceIDToInfo( mDNS * const inMDNS, mDNSInterfaceID inID, mDNSPlatformInterfaceInfo *outInfo );
 
-
-// Wakeup Structs
-
-#define kMulticastWakeupNumTries			( 18 )
-#define kMulticastWakeupSleepBetweenTries	( 100 )
-
-typedef struct MulticastWakeupStruct
-{
-	mDNS					*inMDNS;
-	struct sockaddr_in		addr;
-	INT						addrLen;
-	unsigned char			data[ 102 ];
-	INT						dataLen;
-	INT						numTries;
-	INT						msecSleep;
-} MulticastWakeupStruct;
-
-
 // Utilities
 
 #if( MDNS_WINDOWS_USE_IPV6_IF_ADDRS )
@@ -148,6 +126,7 @@ typedef struct MulticastWakeupStruct
 #endif
 
 mDNSlocal int getifaddrs_ipv4( struct ifaddrs **outAddrs );
+
 
 mDNSlocal DWORD				GetPrimaryInterface();
 mDNSlocal mStatus			AddressToIndexAndMask( struct sockaddr * address, uint32_t * index, struct sockaddr * mask );
@@ -159,10 +138,16 @@ mDNSlocal mStatus			RegQueryString( HKEY key, LPCSTR param, LPSTR * string, DWOR
 mDNSlocal struct ifaddrs*	myGetIfAddrs(int refresh);
 mDNSlocal OSStatus			TCHARtoUTF8( const TCHAR *inString, char *inBuffer, size_t inBufferSize );
 mDNSlocal OSStatus			WindowsLatin1toUTF8( const char *inString, char *inBuffer, size_t inBufferSize );
-mDNSlocal void CALLBACK		TCPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context );
+mDNSlocal void				TCPDidConnect( mDNS * const inMDNS, HANDLE event, void * context );
+mDNSlocal void				TCPCanRead( TCPSocket * sock );
+mDNSlocal mStatus			TCPBeginRecv( TCPSocket * sock );
+mDNSlocal void CALLBACK		TCPEndRecv( DWORD error, DWORD bytesTransferred, LPWSAOVERLAPPED overlapped, DWORD flags );
 mDNSlocal void				TCPCloseSocket( TCPSocket * socket );
-mDNSlocal void CALLBACK		UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context );
+mDNSlocal void CALLBACK		TCPFreeSocket( TCPSocket *sock );
+mDNSlocal OSStatus			UDPBeginRecv( UDPSocket * socket );
+mDNSlocal void CALLBACK		UDPEndRecv( DWORD err, DWORD bytesTransferred, LPWSAOVERLAPPED overlapped, DWORD flags );
 mDNSlocal void				UDPCloseSocket( UDPSocket * sock );
+mDNSlocal void CALLBACK		UDPFreeSocket( UDPSocket * sock );
 mDNSlocal mStatus           SetupAddr(mDNSAddr *ip, const struct sockaddr *const sa);
 mDNSlocal void				GetDDNSFQDN( domainname *const fqdn );
 #ifdef UNICODE
@@ -176,8 +161,8 @@ mDNSlocal VOID CALLBACK		CheckFileSharesProc( LPVOID arg, DWORD dwTimerLowValue,
 mDNSlocal void				CheckFileShares( mDNS * const inMDNS );
 mDNSlocal void				SMBCallback(mDNS *const m, ServiceRecordSet *const srs, mStatus result);
 mDNSlocal mDNSu8			IsWOMPEnabledForAdapter( const char * adapterName );
-mDNSlocal void				SendWakeupPacket( mDNS * const inMDNS, LPSOCKADDR addr, INT addrlen, const char * buf, INT buflen, INT numTries, INT msecSleep );
-mDNSlocal void _cdecl		SendMulticastWakeupPacket( void *arg );
+mDNSlocal void				DispatchUDPEvent( mDNS * const m, UDPSocket * sock );
+mDNSlocal void				DispatchTCPEvent( mDNS * const m, TCPSocket * sock );
 
 #ifdef	__cplusplus
 	}
@@ -195,7 +180,8 @@ mDNSlocal mDNS_PlatformSupport	gMDNSPlatformSupport;
 mDNSs32							mDNSPlatformOneSecond	= 0;
 mDNSlocal UDPSocket		*		gUDPSockets				= NULL;
 mDNSlocal int					gUDPNumSockets			= 0;
-mDNSlocal BOOL					gEnableIPv6				= TRUE;
+mDNSlocal GenLinkedList			gUDPDispatchableSockets;
+mDNSlocal GenLinkedList			gTCPDispatchableSockets;
 
 #if( MDNS_WINDOWS_USE_IPV6_IF_ADDRS )
 
@@ -212,9 +198,11 @@ mDNSlocal BOOL					gEnableIPv6				= TRUE;
 
 #endif
 
+
 #ifndef HCRYPTPROV
    typedef ULONG_PTR HCRYPTPROV;    // WinCrypt.h, line 249
 #endif
+
 
 #ifndef CRYPT_MACHINE_KEYSET
 #	define CRYPT_MACHINE_KEYSET    0x00000020
@@ -271,6 +259,7 @@ mDNSlocal HANDLE					gSMBThreadQuitEvent			= NULL;
 #define	kSMBRegisterEvent			( WAIT_OBJECT_0 + 1 )
 #define kSMBDeregisterEvent			( WAIT_OBJECT_0 + 2 )
 
+
 #if 0
 #pragma mark -
 #pragma mark == Platform Support ==
@@ -283,8 +272,6 @@ mDNSlocal HANDLE					gSMBThreadQuitEvent			= NULL;
 mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 {
 	mStatus		err;
-	OSVERSIONINFO osInfo;
-	BOOL ok;
 	WSADATA		wsaData;
 	int			supported;
 	struct sockaddr_in	sa4;
@@ -292,6 +279,7 @@ mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 	int					sa4len;
 	int					sa6len;
 	DWORD				size;
+	DWORD				val;
 	
 	dlog( kDebugLevelTrace, DEBUG_NAME "platform init\n" );
 	
@@ -306,23 +294,9 @@ mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 	require_action( inMDNS->p->checkFileSharesTimer, exit, err = mStatus_UnknownErr );
 	inMDNS->p->checkFileSharesTimeout		= 10;		// Retry time for CheckFileShares() in seconds
 	mDNSPlatformOneSecond 					= 1000;		// Use milliseconds as the quantum of time
+	InitLinkedList( &gTCPDispatchableSockets, offsetof( TCPSocket, nextDispatchable ) );
+	InitLinkedList( &gUDPDispatchableSockets, offsetof( UDPSocket, nextDispatchable ) );
 	
-	// Get OS version info
-	
-	osInfo.dwOSVersionInfoSize = sizeof( OSVERSIONINFO );
-	ok = GetVersionEx( &osInfo );
-	err = translate_errno( ok, (OSStatus) GetLastError(), kUnknownErr );
-	require_noerr( err, exit );
-	inMDNS->p->osMajorVersion = osInfo.dwMajorVersion;
-	inMDNS->p->osMinorVersion = osInfo.dwMinorVersion;
-	
-	// Don't enable IPv6 on anything less recent than Windows Vista
-
-	if ( inMDNS->p->osMajorVersion < 6 )
-	{
-		gEnableIPv6 = FALSE;
-	}
-
 	// Startup WinSock 2.2 or later.
 	
 	err = WSAStartup( MAKEWORD( kWinSockMajorMin, kWinSockMinorMin ), &wsaData );
@@ -348,11 +322,19 @@ mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 	dlog( kDebugLevelInfo, DEBUG_NAME "HISoftware: %#s\n", inMDNS->HISoftware.c );
 #endif
 
+	// Set the thread global overlapped flag
+
+	val = 0;
+	err = setsockopt( INVALID_SOCKET, SOL_SOCKET, SO_OPENTYPE, ( char* ) &val, sizeof( val ) );
+	err = translate_errno( err != SOCKET_ERROR, WSAGetLastError(), kUnknownErr );
+	require_noerr( err, exit );
+
 	// Set up the IPv4 unicast socket
 
 	inMDNS->p->unicastSock4.fd			= INVALID_SOCKET;
 	inMDNS->p->unicastSock4.recvMsgPtr	= NULL;
 	inMDNS->p->unicastSock4.ifd			= NULL;
+	inMDNS->p->unicastSock4.overlapped.pending = FALSE;
 	inMDNS->p->unicastSock4.next		= NULL;
 	inMDNS->p->unicastSock4.m			= inMDNS;
 
@@ -374,7 +356,7 @@ mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 		inMDNS->p->unicastSock4.recvMsgPtr = NULL;
 	}
 
-	err = mDNSPollRegisterSocket( inMDNS->p->unicastSock4.fd, FD_READ, UDPSocketNotification, &inMDNS->p->unicastSock4 );
+	err = UDPBeginRecv( &inMDNS->p->unicastSock4 );
 	require_noerr( err, exit ); 
 
 #endif
@@ -384,45 +366,43 @@ mDNSexport mStatus	mDNSPlatformInit( mDNS * const inMDNS )
 	inMDNS->p->unicastSock6.fd			= INVALID_SOCKET;
 	inMDNS->p->unicastSock6.recvMsgPtr	= NULL;
 	inMDNS->p->unicastSock6.ifd			= NULL;
+	inMDNS->p->unicastSock6.overlapped.pending = FALSE;
 	inMDNS->p->unicastSock6.next		= NULL;
 	inMDNS->p->unicastSock6.m			= inMDNS;
 
 #if ( MDNS_WINDOWS_ENABLE_IPV6 )
 
-	if ( gEnableIPv6 )
+	sa6.sin6_family		= AF_INET6;
+	sa6.sin6_addr		= in6addr_any;
+	sa6.sin6_scope_id	= 0;
+
+	// This call will fail if the machine hasn't installed IPv6.  In that case,
+	// the error will be WSAEAFNOSUPPORT.
+
+	err = SetupSocket( inMDNS, (const struct sockaddr*) &sa6, zeroIPPort, &inMDNS->p->unicastSock6.fd );
+	require_action( !err || ( err == WSAEAFNOSUPPORT ), exit, err = (mStatus) WSAGetLastError() );
+	err = kNoErr;
+	
+	// If we weren't able to create the socket (because IPv6 hasn't been installed) don't do this
+
+	if ( inMDNS->p->unicastSock6.fd != INVALID_SOCKET )
 	{
-		sa6.sin6_family		= AF_INET6;
-		sa6.sin6_addr		= in6addr_any;
-		sa6.sin6_scope_id	= 0;
+		sa6len = sizeof( sa6 );
+		err = getsockname( inMDNS->p->unicastSock6.fd, (struct sockaddr*) &sa6, &sa6len );
+		require_noerr( err, exit );
+		inMDNS->p->unicastSock6.port.NotAnInteger = sa6.sin6_port;
+		inMDNS->UnicastPort6 = inMDNS->p->unicastSock6.port;
 
-		// This call will fail if the machine hasn't installed IPv6.  In that case,
-		// the error will be WSAEAFNOSUPPORT.
-
-		err = SetupSocket( inMDNS, (const struct sockaddr*) &sa6, zeroIPPort, &inMDNS->p->unicastSock6.fd );
-		require_action( !err || ( err == WSAEAFNOSUPPORT ), exit, err = (mStatus) WSAGetLastError() );
-		err = kNoErr;
+		err = WSAIoctl( inMDNS->p->unicastSock6.fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &kWSARecvMsgGUID, sizeof( kWSARecvMsgGUID ), &inMDNS->p->unicastSock6.recvMsgPtr, sizeof( inMDNS->p->unicastSock6.recvMsgPtr ), &size, NULL, NULL );
 		
-		// If we weren't able to create the socket (because IPv6 hasn't been installed) don't do this
-
-		if ( inMDNS->p->unicastSock6.fd != INVALID_SOCKET )
+		if ( err != 0 )
 		{
-			sa6len = sizeof( sa6 );
-			err = getsockname( inMDNS->p->unicastSock6.fd, (struct sockaddr*) &sa6, &sa6len );
-			require_noerr( err, exit );
-			inMDNS->p->unicastSock6.port.NotAnInteger = sa6.sin6_port;
-			inMDNS->UnicastPort6 = inMDNS->p->unicastSock6.port;
-
-			err = WSAIoctl( inMDNS->p->unicastSock6.fd, SIO_GET_EXTENSION_FUNCTION_POINTER, &kWSARecvMsgGUID, sizeof( kWSARecvMsgGUID ), &inMDNS->p->unicastSock6.recvMsgPtr, sizeof( inMDNS->p->unicastSock6.recvMsgPtr ), &size, NULL, NULL );
-			
-			if ( err != 0 )
-			{
-				inMDNS->p->unicastSock6.recvMsgPtr = NULL;
-			}
-
-			err = mDNSPollRegisterSocket( inMDNS->p->unicastSock6.fd, FD_READ, UDPSocketNotification, &inMDNS->p->unicastSock6 );
-			require_noerr( err, exit );
+			inMDNS->p->unicastSock6.recvMsgPtr = NULL;
 		}
-	}
+
+		err = UDPBeginRecv( &inMDNS->p->unicastSock6 );
+		require_noerr( err, exit );
+	} 
 
 #endif
 
@@ -517,10 +497,7 @@ mDNSexport void	mDNSPlatformClose( mDNS * const inMDNS )
 	
 #if ( MDNS_WINDOWS_ENABLE_IPV6 )
 
-	if ( gEnableIPv6 )
-	{
-		UDPCloseSocket( &inMDNS->p->unicastSock6 );
-	}
+	UDPCloseSocket( &inMDNS->p->unicastSock6 );
 
 #endif
 
@@ -558,10 +535,18 @@ mDNSexport void	mDNSPlatformClose( mDNS * const inMDNS )
 		g_hAAPI32				= NULL;
 	}
 
+	// Clear out the APC queue
+
+	while ( SleepEx( 0, TRUE ) == WAIT_IO_COMPLETION )
+	{
+		DispatchSocketEvents( inMDNS );
+	}
+
 	WSACleanup();
 	
 	dlog( kDebugLevelTrace, DEBUG_NAME "platform close done\n" );
 }
+
 
 //===========================================================================================================================
 //	mDNSPlatformLock
@@ -597,7 +582,7 @@ mDNSexport void	mDNSPlatformStrCopy( void *inDst, const void *inSrc )
 //	mDNSPlatformStrLCopy
 //===========================================================================================================================
 
-mDNSexport mDNSu32	mDNSPlatformStrLCopy( void *inDst, const void *inSrc, mDNSu32 inSize )
+mDNSexport mDNSu32 mDNSPlatformStrLCopy(void *inDst, const void *inSrc, mDNSu32 inSize)
 {
 	const char *		src = (const char *) inSrc;
 	
@@ -662,75 +647,6 @@ mDNSexport mDNSBool	mDNSPlatformMemSame( const void *inDst, const void *inSrc, m
 }
 
 //===========================================================================================================================
-//	mDNSPlatformMemCmp
-//===========================================================================================================================
-
-mDNSexport int	mDNSPlatformMemCmp( const void *inDst, const void *inSrc, mDNSu32 inSize )
-{
-	check( inSrc );
-	check( inDst );
-	
-	return( memcmp( inSrc, inDst, inSize ) );
-}
-
-mDNSexport void mDNSPlatformQsort(void *base, int nel, int width, int (*compar)(const void *, const void *))
-{
-	(void)base;
-	(void)nel;
-	(void)width;
-	(void)compar;
-}
-
-// DNSSEC stub functions
-mDNSexport void VerifySignature(mDNS *const m, DNSSECVerifier *dv, DNSQuestion *q)
-	{
-	(void)m;
-	(void)dv;
-	(void)q;
-	}
-
-mDNSexport mDNSBool AddNSECSForCacheRecord(mDNS *const m, CacheRecord *crlist, CacheRecord *negcr, mDNSu8 rcode)
-	{
-	(void)m;
-	(void)crlist;
-	(void)negcr;
-	(void)rcode;
-	return mDNSfalse;
-	}
-
-mDNSexport void BumpDNSSECStats(mDNS *const m, DNSSECStatsAction action, DNSSECStatsType type, mDNSu32 value)
-    {
-    (void)m;
-    (void)action;
-    (void)type;
-    (void)value;
-    }
-
-// Proxy stub functions
-mDNSexport mDNSu8 *DNSProxySetAttributes(DNSQuestion *q, DNSMessageHeader *h, DNSMessage *msg, mDNSu8 *ptr, mDNSu8 *limit)
-{
-    (void) q;
-    (void) h;
-    (void) msg;
-    (void) ptr;
-    (void) limit;
-
-    return ptr;
-}
-
-mDNSexport void DNSProxyInit(mDNS *const m, mDNSu32 IpIfArr[], mDNSu32 OpIf)
-{
-    (void) m;
-    (void) IpIfArr;
-    (void) OpIf;
-}
-
-mDNSexport void DNSProxyTerminate(mDNS *const m)
-{
-    (void) m;
-}
-
-//===========================================================================================================================
 //	mDNSPlatformMemZero
 //===========================================================================================================================
 
@@ -774,10 +690,67 @@ mDNSexport void	mDNSPlatformMemFree( void *inMem )
 
 mDNSexport mDNSu32 mDNSPlatformRandomNumber(void)
 {
-	unsigned int	randomNumber;
-	errno_t			err;
+	mDNSu32		randomNumber = 0;
+	BOOL		bResult;
+	OSStatus	err = 0;
 
-	err = rand_s( &randomNumber );
+	if ( !g_hAAPI32 )
+	{
+		g_hAAPI32 = LoadLibrary( TEXT("AdvAPI32.dll") );
+		err = translate_errno( g_hAAPI32 != NULL, GetLastError(), mStatus_UnknownErr );
+		require_noerr( err, exit );
+	}
+
+	// Function Pointer: CryptAcquireContext
+
+	if ( !g_lpCryptAcquireContext )
+	{
+		g_lpCryptAcquireContext = ( fnCryptAcquireContext )
+#ifdef UNICODE
+			( GetProcAddress( g_hAAPI32, "CryptAcquireContextW" ) );
+#else
+			( GetProcAddress( g_hAAPI32, "CryptAcquireContextA" ) );
+#endif
+		err = translate_errno( g_lpCryptAcquireContext != NULL, GetLastError(), mStatus_UnknownErr );
+		require_noerr( err, exit );
+	}
+
+	// Function Pointer: CryptReleaseContext
+
+	if ( !g_lpCryptReleaseContext )
+	{
+		g_lpCryptReleaseContext = ( fnCryptReleaseContext )
+         ( GetProcAddress( g_hAAPI32, "CryptReleaseContext" ) );
+		err = translate_errno( g_lpCryptReleaseContext != NULL, GetLastError(), mStatus_UnknownErr );
+		require_noerr( err, exit );
+	}
+      
+	// Function Pointer: CryptGenRandom
+
+	if ( !g_lpCryptGenRandom )
+	{
+		g_lpCryptGenRandom = ( fnCryptGenRandom )
+          ( GetProcAddress( g_hAAPI32, "CryptGenRandom" ) );
+		err = translate_errno( g_lpCryptGenRandom != NULL, GetLastError(), mStatus_UnknownErr );
+		require_noerr( err, exit );
+	}
+
+	// Setup
+
+	if ( !g_hProvider )
+	{
+		bResult = (*g_lpCryptAcquireContext)( &g_hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_MACHINE_KEYSET );
+
+		if ( !bResult )
+		{
+			bResult =  ( *g_lpCryptAcquireContext)( &g_hProvider, NULL, NULL, PROV_RSA_FULL, CRYPT_MACHINE_KEYSET | CRYPT_NEWKEYSET );
+			err = translate_errno( bResult, GetLastError(), mStatus_UnknownErr );
+			require_noerr( err, exit );
+		}
+	}
+
+	bResult = (*g_lpCryptGenRandom)( g_hProvider, sizeof( randomNumber ), ( BYTE* ) &randomNumber );
+	err = translate_errno( bResult, GetLastError(), mStatus_UnknownErr );
 	require_noerr( err, exit );
 
 exit:
@@ -787,7 +760,7 @@ exit:
 		randomNumber = rand();
 	}
 
-	return ( mDNSu32 ) randomNumber;
+	return randomNumber;
 }
 
 //===========================================================================================================================
@@ -901,6 +874,12 @@ mDNSexport mDNSInterfaceID	mDNSPlatformInterfaceIDfromInterfaceIndex( mDNS * con
 	{
 		id = mDNSInterface_LocalOnly;
 	}
+	/* uncomment if Windows ever supports P2P
+	else if( inIndex == kDNSServiceInterfaceIndexP2P )
+	{
+		id = mDNSInterface_P2P;
+	}
+	*/
 	else if( inIndex != 0 )
 	{
 		mDNSInterfaceData *		ifd;
@@ -925,14 +904,19 @@ mDNSexport mDNSInterfaceID	mDNSPlatformInterfaceIDfromInterfaceIndex( mDNS * con
 mDNSexport mDNSu32	mDNSPlatformInterfaceIndexfromInterfaceID( mDNS * const inMDNS, mDNSInterfaceID inID, mDNSBool suppressNetworkChange )
 {
 	mDNSu32		index;
+	(void) suppressNetworkChange; // Unused
 	
-	(void) suppressNetworkChange;
-
 	index = 0;
 	if( inID == mDNSInterface_LocalOnly )
 	{
 		index = (mDNSu32) kDNSServiceInterfaceIndexLocalOnly;
 	}
+	/* uncomment if Windows ever supports P2P
+	else if( inID == mDNSInterface_P2P )
+	{
+		index = (mDNSu32) kDNSServiceInterfaceIndexP2P;
+	}
+	*/
 	else if( inID )
 	{
 		mDNSInterfaceData *		ifd;
@@ -965,6 +949,7 @@ mDNSexport mDNSu32	mDNSPlatformInterfaceIndexfromInterfaceID( mDNS * const inMDN
 	return( index );
 }
 
+
 //===========================================================================================================================
 //	mDNSPlatformTCPSocket
 //===========================================================================================================================
@@ -974,8 +959,7 @@ mDNSPlatformTCPSocket
 	(
 	mDNS			* const m,
 	TCPSocketFlags		flags,
-	mDNSIPPort			*	port, 
-	mDNSBool			useBackgroundTrafficClass
+	mDNSIPPort			*	port 
 	)
 {
 	TCPSocket *		sock    = NULL;
@@ -985,7 +969,6 @@ mDNSPlatformTCPSocket
 	mStatus				err		= mStatus_NoError;
 
 	DEBUG_UNUSED( m );
-	DEBUG_UNUSED( useBackgroundTrafficClass );
 
 	require_action( flags == 0, exit, err = mStatus_UnsupportedErr );
 
@@ -1036,13 +1019,12 @@ exit:
 
 	if ( err && sock )
 	{
-		TCPCloseSocket( sock );
-		free( sock );
+		TCPFreeSocket( sock );
 		sock = mDNSNULL;
 	}
 
 	return sock;
-}
+} 
 
 //===========================================================================================================================
 //	mDNSPlatformTCPConnect
@@ -1054,7 +1036,7 @@ mDNSPlatformTCPConnect
 	TCPSocket			*	sock,
 	const mDNSAddr		*	inDstIP, 
 	mDNSOpaque16 			inDstPort, 
-	domainname			*	hostname,
+	domainname          *   hostname,
 	mDNSInterfaceID			inInterfaceID,
 	TCPConnectionCallback	inCallback, 
 	void *					inContext
@@ -1063,8 +1045,8 @@ mDNSPlatformTCPConnect
 	struct sockaddr_in	saddr;
 	mStatus				err		= mStatus_NoError;
 
-	DEBUG_UNUSED( hostname );
 	DEBUG_UNUSED( inInterfaceID );
+	( void ) hostname;
 
 	if ( inDstIP->type != mDNSAddrType_IPv4 )
 	{
@@ -1074,8 +1056,9 @@ mDNSPlatformTCPConnect
 
 	// Setup connection data object
 
-	sock->userCallback	= inCallback;
-	sock->userContext	= inContext;
+	sock->readEventHandler	= TCPCanRead;
+	sock->userCallback		= inCallback;
+	sock->userContext		= inContext;
 
 	mDNSPlatformMemZero(&saddr, sizeof(saddr));
 	saddr.sin_family	= AF_INET;
@@ -1088,8 +1071,25 @@ mDNSPlatformTCPConnect
 	require_action( !err || ( WSAGetLastError() == WSAEWOULDBLOCK ), exit, err = mStatus_ConnFailed );
 	sock->connected	= !err ? TRUE : FALSE;
 
-	err = mDNSPollRegisterSocket( sock->fd, FD_CONNECT | FD_READ | FD_CLOSE, TCPSocketNotification, sock );
-	require_noerr( err, exit );
+	if ( sock->connected )
+	{
+		err = TCPAddSocket( sock->m, sock );
+		require_noerr( err, exit );
+	}
+	else
+	{
+		require_action( sock->m->p->registerWaitableEventFunc != NULL, exit, err = mStatus_ConnFailed );
+
+		sock->connectEvent	= CreateEvent( NULL, FALSE, FALSE, NULL );
+		err = translate_errno( sock->connectEvent, GetLastError(), mStatus_UnknownErr );
+		require_noerr( err, exit );
+
+		err = WSAEventSelect( sock->fd, sock->connectEvent, FD_CONNECT );
+		require_noerr( err, exit );
+
+		err = sock->m->p->registerWaitableEventFunc( sock->m, sock->connectEvent, sock, TCPDidConnect );
+		require_noerr( err, exit );
+	}
 
 exit:
 
@@ -1105,6 +1105,7 @@ exit:
 //	mDNSPlatformTCPAccept
 //===========================================================================================================================
 
+mDNSexport 
 mDNSexport TCPSocket *mDNSPlatformTCPAccept( TCPSocketFlags flags, int fd )
 	{
 	TCPSocket	*	sock = NULL;
@@ -1131,6 +1132,7 @@ exit:
 	return sock;
 	}
 
+
 //===========================================================================================================================
 //	mDNSPlatformTCPCloseConnection
 //===========================================================================================================================
@@ -1139,20 +1141,19 @@ mDNSexport void	mDNSPlatformTCPCloseConnection( TCPSocket *sock )
 {
 	check( sock );
 
-	if ( sock )
+	if ( sock->connectEvent && sock->m->p->unregisterWaitableEventFunc )
 	{
-		dlog( kDebugLevelChatty, DEBUG_NAME "mDNSPlatformTCPCloseConnection 0x%x:%d\n", sock, sock->fd );
+		sock->m->p->unregisterWaitableEventFunc( sock->m, sock->connectEvent );
+	}
 
-		if ( sock->fd != INVALID_SOCKET )
-		{
-			mDNSPollUnregisterSocket( sock->fd );
-			closesocket( sock->fd );
-			sock->fd = INVALID_SOCKET;
-		}
+	if ( sock->fd != INVALID_SOCKET )
+	{
+		TCPCloseSocket( sock );
 
-		free( sock );
+		QueueUserAPC( ( PAPCFUNC ) TCPFreeSocket, sock->m->p->mainThread, ( ULONG_PTR ) sock );
 	}
 }
+
 
 //===========================================================================================================================
 //	mDNSPlatformReadTCP
@@ -1160,38 +1161,52 @@ mDNSexport void	mDNSPlatformTCPCloseConnection( TCPSocket *sock )
 
 mDNSexport long	mDNSPlatformReadTCP( TCPSocket *sock, void *inBuffer, unsigned long inBufferSize, mDNSBool * closed )
 {
-	int			nread;
-    OSStatus    err;
+	unsigned long	bytesLeft;
+	int				wsaError;
+	long			ret;
 
-	*closed = mDNSfalse;
-    nread = recv( sock->fd, inBuffer, inBufferSize, 0 );
-    err = translate_errno( ( nread >= 0 ), WSAGetLastError(), mStatus_UnknownErr );
+	*closed = sock->closed;
+	wsaError = sock->lastError;
+	ret = -1;
+
+	if ( *closed )
+	{
+		ret = 0;
+	}
+	else if ( sock->lastError == 0 )
+	{
+		// First check to see if we have any data left in our buffer
+
+		bytesLeft = ( DWORD ) ( sock->eptr - sock->bptr );
+
+		if ( bytesLeft )
+		{
+			unsigned long bytesToCopy = ( bytesLeft < inBufferSize ) ? bytesLeft : inBufferSize;
+
+			memcpy( inBuffer, sock->bptr, bytesToCopy );
+			sock->bptr += bytesToCopy;
+
+			if ( !sock->overlapped.pending && ( sock->bptr == sock->eptr ) )
+			{
+				sock->bptr = sock->bbuf;
+				sock->eptr = sock->bbuf;
+			}
+
+			ret = bytesToCopy;
+		}
+		else
+		{
+			wsaError = WSAEWOULDBLOCK;
+		}
+	}
+
+	// Always set the last winsock error, so that we don't inadvertently use a previous one		
 	
-	if ( nread > 0 )
-	{
-		dlog( kDebugLevelChatty, DEBUG_NAME "mDNSPlatformReadTCP: 0x%x:%d read %d bytes\n", sock, sock->fd, nread );
-	}
-	else if ( !nread )
-	{
-		*closed = mDNStrue;
-	}
-	else if ( err == WSAECONNRESET )
-	{
-		*closed = mDNStrue;
-		nread = 0;
-	}
-	else if ( err == WSAEWOULDBLOCK )
-	{
-		nread = 0;
-	}
-	else
-	{
-		LogMsg( "ERROR: mDNSPlatformReadTCP - recv: %d\n", err );
-		nread = -1;
-	}
+	WSASetLastError( wsaError );
 
-    return nread;
+	return ret;
 }
+
 
 //===========================================================================================================================
 //	mDNSPlatformWriteTCP
@@ -1226,45 +1241,156 @@ mDNSexport int mDNSPlatformTCPGetFD(TCPSocket *sock )
 	return ( int ) sock->fd;
 }
 
+
 //===========================================================================================================================
-//	TCPSocketNotification
+//	TCPAddConnection
 //===========================================================================================================================
 
-mDNSlocal void CALLBACK
-TCPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
+mStatus TCPAddSocket( mDNS * const inMDNS, TCPSocket *sock )
 {
-	TCPSocket				*tcpSock = ( TCPSocket* ) context;
-	TCPConnectionCallback	callback;
-	int						err;
+	mStatus err;
 
-	DEBUG_UNUSED( sock );
+	( void ) inMDNS;
 
-	require_action( tcpSock, exit, err = mStatus_BadParamErr );
-	callback = ( TCPConnectionCallback ) tcpSock->userCallback;
-	require_action( callback, exit, err = mStatus_BadParamErr );
+	sock->bptr	= sock->bbuf;
+	sock->eptr	= sock->bbuf;
+	sock->ebuf	= sock->bbuf + sizeof( sock->bbuf );
 
-	if ( event && ( event->lNetworkEvents & FD_CONNECT ) )
+	dlog( kDebugLevelChatty, DEBUG_NAME "adding TCPSocket 0x%x:%d\n", sock, sock->fd );
+	err = TCPBeginRecv( sock );
+	require_noerr( err, exit );
+
+exit:
+
+	return err;
+}
+
+
+//===========================================================================================================================
+//	TCPDidConnect
+//===========================================================================================================================
+
+mDNSlocal void TCPDidConnect( mDNS * const inMDNS, HANDLE event, void * context )
+{
+	TCPSocket * sock = ( TCPSocket* ) context;
+	TCPConnectionCallback callback = NULL;
+	WSANETWORKEVENTS sockEvent;
+	int err = kNoErr;
+
+	if ( inMDNS->p->unregisterWaitableEventFunc )
 	{
-		if ( event->iErrorCode[ FD_CONNECT_BIT ] == 0 )
+		inMDNS->p->unregisterWaitableEventFunc( inMDNS, event );
+	}
+
+	if ( sock )
+	{
+		callback = ( TCPConnectionCallback ) sock->userCallback;
+		err = WSAEnumNetworkEvents( sock->fd, sock->connectEvent, &sockEvent );
+		require_noerr( err, exit );
+		require_action( sockEvent.lNetworkEvents & FD_CONNECT, exit, err = mStatus_UnknownErr );
+		require_action( sockEvent.iErrorCode[ FD_CONNECT_BIT ] == 0, exit, err = sockEvent.iErrorCode[ FD_CONNECT_BIT ] );
+
+		sock->connected	= mDNStrue;
+
+		if ( sock->fd != INVALID_SOCKET )
 		{
-			callback( tcpSock, tcpSock->userContext, mDNStrue, 0 );
-			tcpSock->connected = mDNStrue;
+			err = TCPAddSocket( sock->m, sock );
+			require_noerr( err, exit );
 		}
-		else
+
+		if ( callback )
 		{
-			callback( tcpSock, tcpSock->userContext, mDNSfalse, event->iErrorCode[ FD_CONNECT_BIT ] );
+			callback( sock, sock->userContext, TRUE, 0 );
 		}
 	}
-	else
+
+exit:
+
+	if ( err && callback )
 	{
-		callback( tcpSock, tcpSock->userContext, mDNSfalse, 0 );
+		callback( sock, sock->userContext, TRUE, err );
 	}
+}
+
+
+
+//===========================================================================================================================
+//	TCPCanRead
+//===========================================================================================================================
+
+mDNSlocal void TCPCanRead( TCPSocket * sock )
+{
+	TCPConnectionCallback callback = ( TCPConnectionCallback ) sock->userCallback;
+
+	if ( callback )
+	{
+		callback( sock, sock->userContext, mDNSfalse, sock->lastError );
+	}
+}
+
+
+//===========================================================================================================================
+//	TCPBeginRecv
+//===========================================================================================================================
+
+mDNSlocal mStatus TCPBeginRecv( TCPSocket * sock )
+{
+	DWORD	bytesReceived	= 0;
+	DWORD	flags			= 0;
+	mStatus err;
+
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: sock = %d\n", __ROUTINE__, sock->fd );
+
+	check( !sock->overlapped.pending );
+
+	ZeroMemory( &sock->overlapped.data, sizeof( sock->overlapped.data ) );
+	sock->overlapped.data.hEvent = sock;
+
+	sock->overlapped.wbuf.buf = ( char* ) sock->eptr;
+	sock->overlapped.wbuf.len = ( ULONG) ( sock->ebuf - sock->eptr );
+	
+	err = WSARecv( sock->fd, &sock->overlapped.wbuf, 1, &bytesReceived, &flags, &sock->overlapped.data, ( LPWSAOVERLAPPED_COMPLETION_ROUTINE ) TCPEndRecv );
+	err = translate_errno( ( err == 0 ) || ( WSAGetLastError() == WSA_IO_PENDING ), WSAGetLastError(), kUnknownErr );
+	require_noerr( err, exit );
+
+	sock->overlapped.pending = TRUE;
+
+exit:
+
+	return err;
+}
+
+
+//===========================================================================================================================
+//	TCPEndRecv
+//===========================================================================================================================
+
+mDNSlocal void CALLBACK TCPEndRecv( DWORD error, DWORD bytesTransferred, LPWSAOVERLAPPED overlapped, DWORD flags )
+{
+	TCPSocket * sock;
+
+	( void ) flags;
+
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: error = %d, bytesTransferred = %d\n", __ROUTINE__, error, bytesTransferred );
+	sock = ( overlapped != NULL ) ? overlapped->hEvent : NULL;
+	require_action( sock, exit, error = ( DWORD ) mStatus_BadStateErr );
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: sock = %d\n", __ROUTINE__, sock->fd );
+	sock->overlapped.error				= error;
+	sock->overlapped.bytesTransferred	= bytesTransferred;
+	check( sock->overlapped.pending );
+	sock->overlapped.pending			= FALSE;
+
+	// Queue this socket
+
+	AddToTail( &gTCPDispatchableSockets, sock );
 
 exit:
 
 	return;
 }
 
+
+	
 //===========================================================================================================================
 //	mDNSPlatformUDPSocket
 //===========================================================================================================================
@@ -1284,11 +1410,12 @@ mDNSexport UDPSocket* mDNSPlatformUDPSocket(mDNS *const m, const mDNSIPPort requ
 
 	// Create the socket
 
-	sock->fd			= INVALID_SOCKET;
-	sock->recvMsgPtr	= m->p->unicastSock4.recvMsgPtr;
-	sock->addr			= m->p->unicastSock4.addr;
-	sock->ifd			= NULL;
-	sock->m				= m;
+	sock->fd					= INVALID_SOCKET;
+	sock->recvMsgPtr			= m->p->unicastSock4.recvMsgPtr;
+	sock->addr					= m->p->unicastSock4.addr;
+	sock->ifd					= NULL;
+	sock->overlapped.pending	= FALSE;
+	sock->m						= m;
 
 	// Try at most 10000 times to get a unique random port
 
@@ -1321,7 +1448,7 @@ mDNSexport UDPSocket* mDNSPlatformUDPSocket(mDNS *const m, const mDNSIPPort requ
 
 	// Arm the completion routine
 
-	err = mDNSPollRegisterSocket( sock->fd, FD_READ, UDPSocketNotification, sock );
+	err = UDPBeginRecv( sock );
 	require_noerr( err, exit ); 
 
 	// Bookkeeping
@@ -1334,8 +1461,7 @@ exit:
 
 	if ( err && sock )
 	{
-		UDPCloseSocket( sock );
-		free( sock );
+		UDPFreeSocket( sock );
 		sock = NULL;
 	}
 
@@ -1364,8 +1490,20 @@ mDNSexport void mDNSPlatformUDPClose( UDPSocket *sock )
 				last->next = sock->next;
 			}
 
+			// Alertable I/O is great, except not so much when it comes to closing
+			// the socket.  Anything that has been previously queued for this socket
+			// will stay in the queue after you close the socket.  This is problematic
+			// for obvious reasons. So we'll attempt to workaround this by closing
+			// the socket which will prevent any further queued packets and then not calling
+			// UDPFreeSocket directly, but by queueing it using QueueUserAPC.  The queues
+			// are FIFO, so that will execute *after* any other previous items in the queue
+			//
+			// UDPEndRecv will check if the socket is valid, and if not, it will ignore
+			// the packet
+
 			UDPCloseSocket( sock );
-			free( sock );
+
+			QueueUserAPC( ( PAPCFUNC ) UDPFreeSocket, sock->m->p->mainThread, ( ULONG_PTR ) sock );
 
 			gUDPNumSockets--;
 
@@ -1376,6 +1514,7 @@ mDNSexport void mDNSPlatformUDPClose( UDPSocket *sock )
 		current	= current->next;
 	}
 }
+
 
 //===========================================================================================================================
 //	mDNSPlatformSendUDP
@@ -1389,8 +1528,7 @@ mDNSexport mStatus
 		mDNSInterfaceID 			inInterfaceID, 
 		UDPSocket *					inSrcSocket,
 		const mDNSAddr *			inDstIP, 
-		mDNSIPPort 					inDstPort,
-		mDNSBool 					useBackgroundTrafficClass )
+		mDNSIPPort 					inDstPort )
 {
 	SOCKET						sendingsocket = INVALID_SOCKET;
 	mStatus						err = mStatus_NoError;
@@ -1399,7 +1537,6 @@ mDNSexport mStatus
 	int							n;
 	
 	DEBUG_USE_ONLY( inMDNS );
-	DEBUG_USE_ONLY( useBackgroundTrafficClass );
 	
 	n = (int)( inMsgEnd - ( (const mDNSu8 * const) inMsg ) );
 	check( inMDNS );
@@ -1464,113 +1601,28 @@ exit:
 	return( err );
 }
 
+
 mDNSexport void mDNSPlatformUpdateProxyList(mDNS *const m, const mDNSInterfaceID InterfaceID)
 	{
 	DEBUG_UNUSED( m );
 	DEBUG_UNUSED( InterfaceID );
 	}
 
-mDNSexport void mDNSPlatformSetAllowSleep(mDNS *const m, mDNSBool allowSleep, const char *reason)
-	{
-	DEBUG_UNUSED( m );
-	DEBUG_UNUSED( allowSleep );
-	DEBUG_UNUSED( reason );
-	}
-
 //===========================================================================================================================
 //	mDNSPlatformSendRawPacket
 //===========================================================================================================================
-
-mDNSexport void mDNSPlatformSendWakeupPacket(mDNS *const m, mDNSInterfaceID InterfaceID, char *ethaddr, char *ipaddr, int iteration)
-{
-	unsigned char			mac[ 6 ];
-	unsigned char			buf[ 102 ];
-	char					hex[ 3 ] = { 0 };
-	unsigned char			*bufPtr = buf;
-	MulticastWakeupStruct	*info;
-	int						i;
-	mStatus					err;
-
-	(void) InterfaceID; // unused
-	(void) ipaddr;      // unused
-	(void) iteration;   // unused
-
-	require_action( ethaddr, exit, err = mStatus_BadParamErr );
-
-	for ( i = 0; i < 6; i++ )
-	{
-		memcpy( hex, ethaddr + ( i * 3 ), 2 );
-		mac[ i ] = ( unsigned char ) strtoul( hex, NULL, 16 );
-	}
-
-	memset( buf, 0, sizeof( buf ) );
-
-	for ( i = 0; i < 6; i++ )
-	{
-		*bufPtr++ = 0xff;
-	}
 	
-	for ( i = 0; i < 16; i++ )
-	{
-		memcpy( bufPtr, mac, sizeof( mac ) );
-		bufPtr += sizeof( mac );
-	}
+mDNSexport void mDNSPlatformSetAllowSleep(mDNS *const m, mDNSBool allowSleep, const char *reason)
+    {
+    DEBUG_UNUSED( m );
+	DEBUG_UNUSED( allowSleep );
+	DEBUG_UNUSED( reason );
+    }
 
-	info = ( MulticastWakeupStruct* ) malloc( sizeof( MulticastWakeupStruct ) );
-	require_action( info, exit, err = mStatus_NoMemoryErr );
-	info->inMDNS = m;
-	memset( &info->addr, 0, sizeof( info->addr ) );
-	info->addr.sin_family = AF_INET;
-	info->addr.sin_addr.s_addr = AllDNSLinkGroup_v4.ip.v4.NotAnInteger;
-	info->addr.sin_port = htons( 9 );
-	info->addrLen = sizeof( info->addr );
-	memcpy( info->data, buf, sizeof( buf ) );
-	info->dataLen = sizeof( buf );
-	info->numTries  = kMulticastWakeupNumTries;
-	info->msecSleep = kMulticastWakeupSleepBetweenTries;
-
-	_beginthread( SendMulticastWakeupPacket, 0, ( void* ) info );
-
-exit:
-
-	return;
-}
-
-mDNSexport mDNSBool mDNSPlatformValidRecordForInterface(const AuthRecord *rr, mDNSInterfaceID InterfaceID)
-{
-	DEBUG_UNUSED( rr );
-	DEBUG_UNUSED( InterfaceID );
-
-	return mDNStrue;
-}
- 
-mDNSexport mDNSBool mDNSPlatformValidQuestionForInterface(DNSQuestion *q, const NetworkInterfaceInfo *intf)
-{
-	DEBUG_UNUSED( q );
-	DEBUG_UNUSED( intf );
-
-	return mDNStrue;
-}
- 
 mDNSexport void mDNSPlatformSendRawPacket(const void *const msg, const mDNSu8 *const end, mDNSInterfaceID InterfaceID)
 	{
 	DEBUG_UNUSED( msg );
 	DEBUG_UNUSED( end );
-	DEBUG_UNUSED( InterfaceID );
-	}
-
-// Used for debugging purposes. For now, just set the buffer to zero
-mDNSexport void mDNSPlatformFormatTime(unsigned long te, mDNSu8 *buf, int bufsize)
-	{
-	DEBUG_UNUSED( te );
-	if (bufsize) buf[0] = 0;
-	}
-
-mDNSexport void mDNSPlatformSetLocalAddressCacheEntry(mDNS *const m, const mDNSAddr *const tpa, const mDNSEthAddr *const tha, mDNSInterfaceID InterfaceID)
-	{
-	DEBUG_UNUSED( m );
-	DEBUG_UNUSED( tpa );
-	DEBUG_UNUSED( tha );
 	DEBUG_UNUSED( InterfaceID );
 	}
 
@@ -1581,8 +1633,9 @@ mDNSexport void mDNSPlatformReceiveRawPacket(const void *const msg, const mDNSu8
 	DEBUG_UNUSED( InterfaceID );
 	}
 
-mDNSexport void mDNSPlatformSetLocalARP( const mDNSv4Addr * const tpa, const mDNSEthAddr * const tha, mDNSInterfaceID InterfaceID )
+mDNSexport void mDNSPlatformSetLocalAddressCacheEntry(mDNS *const m, const mDNSAddr *const tpa, const mDNSEthAddr *const tha, mDNSInterfaceID InterfaceID)
 	{
+	DEBUG_UNUSED( m );
 	DEBUG_UNUSED( tpa );
 	DEBUG_UNUSED( tha );
 	DEBUG_UNUSED( InterfaceID );
@@ -1650,10 +1703,8 @@ mDNSPlatformTLSTearDownCerts(void)
 mDNSlocal void SetDNSServers( mDNS *const m );
 mDNSlocal void SetSearchDomainList( void );
 
-mDNSexport mDNSBool mDNSPlatformSetDNSConfig(mDNS *const m, mDNSBool setservers, mDNSBool setsearch, domainname *const fqdn, DNameListElem **regDomains, DNameListElem **browseDomains, mDNSBool ackConfig)
+mDNSexport void mDNSPlatformSetDNSConfig(mDNS *const m, mDNSBool setservers, mDNSBool setsearch, domainname *const fqdn, DNameListElem **regDomains, DNameListElem **browseDomains)
 {
-	(void) ackConfig;
-
 	if (setservers) SetDNSServers(m);
 	if (setsearch) SetSearchDomainList();
 	
@@ -1671,8 +1722,8 @@ mDNSexport mDNSBool mDNSPlatformSetDNSConfig(mDNS *const m, mDNSBool setservers,
 	{
 		GetDDNSDomains( regDomains, kServiceParametersNode TEXT("\\DynDNS\\Setup\\") kServiceDynDNSRegistrationDomains );
 	}
-    return mDNStrue;
 }
+
 
 //===========================================================================================================================
 //	mDNSPlatformDynDNSHostNameStatusChanged
@@ -1718,6 +1769,16 @@ exit:
 	return;
 }
 
+
+mDNSexport void FreeEtcHosts(mDNS *const m, AuthRecord *const rr, mStatus result)
+    {
+    (void)m;  // unused
+    (void)rr;
+    (void)result;
+    }
+
+
+
 //===========================================================================================================================
 //	SetDomainSecrets
 //===========================================================================================================================
@@ -1758,6 +1819,7 @@ SetDomainSecrets( mDNS * const m )
 		free( current );
 	}
 }
+
 
 //===========================================================================================================================
 //	SetSearchDomainList
@@ -1809,6 +1871,7 @@ exit:
 	SetReverseMapSearchDomainList();
 }
 
+
 //===========================================================================================================================
 //	SetReverseMapSearchDomainList
 //===========================================================================================================================
@@ -1830,10 +1893,10 @@ SetReverseMapSearchDomainList( void )
 			
 			if (!SetupAddr(&netmask, ifa->ifa_netmask))
 			{
-				_snprintf(buffer, sizeof( buffer ), "%d.%d.%d.%d.in-addr.arpa.", addr.ip.v4.b[3] & netmask.ip.v4.b[3],
-                                                                               addr.ip.v4.b[2] & netmask.ip.v4.b[2],
-                                                                               addr.ip.v4.b[1] & netmask.ip.v4.b[1],
-                                                                               addr.ip.v4.b[0] & netmask.ip.v4.b[0]);
+				sprintf(buffer, "%d.%d.%d.%d.in-addr.arpa.", addr.ip.v4.b[3] & netmask.ip.v4.b[3],
+                                                             addr.ip.v4.b[2] & netmask.ip.v4.b[2],
+                                                             addr.ip.v4.b[1] & netmask.ip.v4.b[1],
+                                                             addr.ip.v4.b[0] & netmask.ip.v4.b[0]);
 				mDNS_AddSearchDomain_CString(buffer, mDNSNULL);
 			}
 		}
@@ -1843,6 +1906,7 @@ SetReverseMapSearchDomainList( void )
 
 	return;
 }
+
 
 //===========================================================================================================================
 //	SetDNSServers
@@ -1920,7 +1984,7 @@ SetDNSServers( mDNS *const m )
 	{
 		mDNSAddr addr;
 		err = StringToAddress( &addr, ipAddr->IpAddress.String );
-		if ( !err ) mDNS_AddDNSServer(m, mDNSNULL, mDNSInterface_Any, 0, &addr, UnicastDNSPort, kScopeNone, DEFAULT_UDNS_TIMEOUT, mDNSfalse, mDNSfalse, 0, mDNStrue, mDNStrue, mDNSfalse);
+		if ( !err ) mDNS_AddDNSServer(m, mDNSNULL, mDNSInterface_Any, &addr, UnicastDNSPort, mDNSfalse, 0);
 	}
 
 exit:
@@ -1935,6 +1999,7 @@ exit:
 		GlobalFree( fixedInfo );
 	}
 }
+
 
 //===========================================================================================================================
 //	SetDomainFromDHCP
@@ -2028,6 +2093,7 @@ exit:
 	}
 }
 
+
 //===========================================================================================================================
 //	mDNSPlatformGetPrimaryInterface
 //===========================================================================================================================
@@ -2100,84 +2166,23 @@ exit:
 	return err;
 }
 
-mDNSexport void mDNSPlatformSendKeepalive(mDNSAddr *sadd, mDNSAddr *dadd, mDNSIPPort *lport, mDNSIPPort *rport, mDNSu32 seq, mDNSu32 ack, mDNSu16 win)
-{
-	(void) sadd; 	// Unused
-	(void) dadd; 	// Unused
-	(void) lport; 	// Unused
-	(void) rport; 	// Unused
-	(void) seq; 	// Unused
-	(void) ack; 	// Unused
-	(void) win;		// Unused
-}
+mDNSexport void mDNSPlatformSendWakeupPacket(mDNS *const m, mDNSInterfaceID InterfaceID, char *EthAddr, char *IPAddr, int iteration)
+	{
+	(void) m;
+	(void) InterfaceID;
+	(void) EthAddr;
+	(void) IPAddr;
+	(void) iteration;
+	}
 
-mDNSexport mStatus mDNSPlatformGetRemoteMacAddr(mDNS *const m, mDNSAddr *raddr)
-{
-	(void) m;		// Unused
-	(void) raddr;	// Unused
+mDNSexport mDNSBool mDNSPlatformValidRecordForInterface(AuthRecord *rr, const NetworkInterfaceInfo *intf)
+	{
+	(void) rr;
+	(void) intf;
 
-	return mStatus_UnsupportedErr;
-}
+	return 1;
+	}
 
-mDNSexport  mStatus    mDNSPlatformStoreSPSMACAddr(mDNSAddr *spsaddr, char *ifname)
-{
-	(void) spsaddr; // Unused
-	(void) ifname;  // Unused
-
-	return mStatus_UnsupportedErr;
-}
-
-mDNSexport  mStatus    mDNSPlatformClearSPSData(void)
-{
-	return mStatus_UnsupportedErr;
-}
-
-mDNSexport mStatus mDNSPlatformStoreOwnerOptRecord(char *ifname, DNSMessage *msg, int length)
-{
-	(void) ifname;	// Unused
-    (void) msg;     // Unused
-    (void) length;  // Unused
-	return mStatus_UnsupportedErr;
-}
-
-mDNSexport mStatus mDNSPlatformRetrieveTCPInfo(mDNS *const m, mDNSAddr *laddr, mDNSIPPort *lport, mDNSAddr *raddr, mDNSIPPort *rport, mDNSTCPInfo *mti)
-{
-	(void) m;       // Unused
-	(void) laddr; 	// Unused
-	(void) raddr; 	// Unused
-	(void) lport; 	// Unused
-	(void) rport; 	// Unused
-	(void) mti; 	// Unused
-
-	return mStatus_UnsupportedErr;
-}
-
-mDNSexport void mDNSPlatformSetSocktOpt(void *sock, mDNSTransport_Type transType, mDNSAddr_Type addrType, const DNSQuestion *q)
-    {
-    (void) sock;
-    (void) transType;
-    (void) addrType;
-    (void) q;
-    }
-
-mDNSexport mDNSs32 mDNSPlatformGetPID()
-    {
-    return 0;
-    }
-
-mDNSexport mDNSu16 mDNSPlatformGetUDPPort(UDPSocket *sock)
-{
-	DEBUG_UNUSED( sock );
- 
-	return (mDNSu16)-1;
-}
-
-mDNSexport mDNSBool mDNSPlatformInterfaceIsD2D(mDNSInterfaceID InterfaceID)
-{
-	DEBUG_UNUSED( InterfaceID );
-    
-	return mDNSfalse;
-}
 
 #if 0
 #pragma mark -
@@ -2220,10 +2225,12 @@ mDNSexport void	verbosedebugf_( const char *inFormat, ... )
 }
 #endif
 
+
 #if 0
 #pragma mark -
 #pragma mark == Platform Internals  ==
 #endif
+
 
 //===========================================================================================================================
 //	SetupNiceName
@@ -2296,7 +2303,7 @@ mStatus	SetupNiceName( mDNS * const inMDNS )
 	{
 		// Invalidate name so fall back to a default name.
 		
-		strcpy_s( utf8, sizeof( utf8 ), kMDNSDefaultName );
+		strcpy( utf8, kMDNSDefaultName );
 	}
 
 	utf8[ sizeof( utf8 ) - 1 ]	= '\0';	
@@ -2366,7 +2373,7 @@ mDNSlocal mStatus	SetupHostName( mDNS * const inMDNS )
 	{
 		// Invalidate name so fall back to a default name.
 		
-		strcpy_s( tempString, sizeof( tempString ), kMDNSDefaultName );
+		strcpy( tempString, kMDNSDefaultName );
 	}
 
 	tempString[ sizeof( tempString ) - 1 ] = '\0';
@@ -2410,6 +2417,7 @@ mDNSlocal mStatus	SetupName( mDNS * const inMDNS )
 
 	return err;
 }
+
 
 //===========================================================================================================================
 //	SetupInterfaceList
@@ -2521,56 +2529,51 @@ mStatus	SetupInterfaceList( mDNS * const inMDNS )
 	// Set up IPv6 interface(s) after IPv4 is set up (see IPv4 notes above for reasoning).
 	
 #if( MDNS_WINDOWS_ENABLE_IPV6 )
-
-	if ( gEnableIPv6 )
+	for( p = addrs; p; p = p->ifa_next )
 	{
-		for( p = addrs; p; p = p->ifa_next )
+		if( !p->ifa_addr || ( p->ifa_addr->sa_family != AF_INET6 ) || ( ( p->ifa_flags & flagMask ) != flagTest ) )
 		{
-			if( !p->ifa_addr || ( p->ifa_addr->sa_family != AF_INET6 ) || ( ( p->ifa_flags & flagMask ) != flagTest ) )
-			{
-				continue;
-			}
-			if( p->ifa_flags & IFF_LOOPBACK )
-			{
-				if( !loopbackv6 )
-				{
-					loopbackv6 = p;
-				}
-				continue;
-			}
-			dlog( kDebugLevelVerbose, DEBUG_NAME "Interface %40s (0x%08X) %##a\n", 
-				p->ifa_name ? p->ifa_name : "<null>", p->ifa_extra.index, p->ifa_addr );
-			
-			err = SetupInterface( inMDNS, p, &ifd );
-			require_noerr( err, exit );
-					
-			// If this guy is point-to-point (ifd->interfaceInfo.McastTxRx == 0 ) we still want to
-			// register him, but we also want to note that we haven't found a v4 interface
-			// so that we register loopback so same host operations work
-	 		
-			if ( ifd->interfaceInfo.McastTxRx == mDNStrue )
-			{
-				foundv6 = mDNStrue;
-			}
-
-			// If we're on a platform that doesn't have WSARecvMsg(), there's no way
-			// of determing the destination address of a packet that is sent to us.
-			// For multicast packets, that's easy to determine.  But for the unicast
-			// sockets, we'll fake it by taking the address of the first interface
-			// that is successfully setup.
-
-			if ( !foundUnicastSock6DestAddr )
-			{
-				inMDNS->p->unicastSock6.addr = ifd->interfaceInfo.ip;
-				foundUnicastSock6DestAddr = TRUE;
-			}
-
-			*next = ifd;
-			next  = &ifd->next;
-			++inMDNS->p->interfaceCount;
+			continue;
 		}
-	}
+		if( p->ifa_flags & IFF_LOOPBACK )
+		{
+			if( !loopbackv6 )
+			{
+				loopbackv6 = p;
+			}
+			continue;
+		}
+		dlog( kDebugLevelVerbose, DEBUG_NAME "Interface %40s (0x%08X) %##a\n", 
+			p->ifa_name ? p->ifa_name : "<null>", p->ifa_extra.index, p->ifa_addr );
+		
+		err = SetupInterface( inMDNS, p, &ifd );
+		require_noerr( err, exit );
+				
+		// If this guy is point-to-point (ifd->interfaceInfo.McastTxRx == 0 ) we still want to
+		// register him, but we also want to note that we haven't found a v4 interface
+		// so that we register loopback so same host operations work
+ 		
+		if ( ifd->interfaceInfo.McastTxRx == mDNStrue )
+		{
+			foundv6 = mDNStrue;
+		}
 
+		// If we're on a platform that doesn't have WSARecvMsg(), there's no way
+		// of determing the destination address of a packet that is sent to us.
+		// For multicast packets, that's easy to determine.  But for the unicast
+		// sockets, we'll fake it by taking the address of the first interface
+		// that is successfully setup.
+
+		if ( !foundUnicastSock6DestAddr )
+		{
+			inMDNS->p->unicastSock6.addr = ifd->interfaceInfo.ip;
+			foundUnicastSock6DestAddr = TRUE;
+		}
+
+		*next = ifd;
+		next  = &ifd->next;
+		++inMDNS->p->interfaceCount;
+	}
 #endif
 
 	// If there are no real interfaces, but there is a loopback interface, use that so same-machine operations work.
@@ -2637,21 +2640,17 @@ mStatus	SetupInterfaceList( mDNS * const inMDNS )
 		
 #if( MDNS_WINDOWS_ENABLE_IPV6 )
 
-		if ( gEnableIPv6 )
+		// If we're on a platform that doesn't have WSARecvMsg(), there's no way
+		// of determing the destination address of a packet that is sent to us.
+		// For multicast packets, that's easy to determine.  But for the unicast
+		// sockets, we'll fake it by taking the address of the first interface
+		// that is successfully setup.
+
+		if ( !foundUnicastSock6DestAddr )
 		{
-			// If we're on a platform that doesn't have WSARecvMsg(), there's no way
-			// of determing the destination address of a packet that is sent to us.
-			// For multicast packets, that's easy to determine.  But for the unicast
-			// sockets, we'll fake it by taking the address of the first interface
-			// that is successfully setup.
-
-			if ( !foundUnicastSock6DestAddr )
-			{
-				inMDNS->p->unicastSock6.addr = ifd->sock.addr;
-				foundUnicastSock6DestAddr = TRUE;
-			}
+			inMDNS->p->unicastSock6.addr = ifd->sock.addr;
+			foundUnicastSock6DestAddr = TRUE;
 		}
-
 #endif
 
 		*next = ifd;
@@ -2744,12 +2743,13 @@ mDNSlocal mStatus	SetupInterface( mDNS * const inMDNS, const struct ifaddrs *inI
 	
 	ifd = (mDNSInterfaceData *) calloc( 1, sizeof( *ifd ) );
 	require_action( ifd, exit, err = mStatus_NoMemoryErr );
-	ifd->sock.fd	= kInvalidSocketRef;
-	ifd->sock.ifd	= ifd;
-	ifd->sock.next	= NULL;
-	ifd->sock.m		= inMDNS;
-	ifd->index		= inIFA->ifa_extra.index;
-	ifd->scopeID	= inIFA->ifa_extra.index;
+	ifd->sock.fd		= kInvalidSocketRef;
+	ifd->sock.overlapped.pending = FALSE;
+	ifd->sock.ifd		= ifd;
+	ifd->sock.next		= NULL;
+	ifd->sock.m			= inMDNS;
+	ifd->index			= inIFA->ifa_extra.index;
+	ifd->scopeID		= inIFA->ifa_extra.index;
 	check( strlen( inIFA->ifa_name ) < sizeof( ifd->name ) );
 	strncpy( ifd->name, inIFA->ifa_name, sizeof( ifd->name ) - 1 );
 	ifd->name[ sizeof( ifd->name ) - 1 ] = '\0';
@@ -2834,16 +2834,11 @@ mDNSlocal mStatus	SetupInterface( mDNS * const inMDNS, const struct ifaddrs *inI
 
 	if ( ifd->sock.fd != kInvalidSocketRef )
 	{
-		err = mDNSPollRegisterSocket( ifd->sock.fd, FD_READ, UDPSocketNotification, &ifd->sock );
+		err = UDPBeginRecv( &ifd->sock );
 		require_noerr( err, exit );
 	}
 
-    // If interface is a direct link, address record will be marked as kDNSRecordTypeKnownUnique
-    // and skip the probe phase of the probe/announce packet sequence.
-    ifd->interfaceInfo.DirectLink = mDNSfalse;
-    ifd->interfaceInfo.SupportsUnicastMDNSResponse = mDNStrue;
-
-	err = mDNS_RegisterInterface( inMDNS, &ifd->interfaceInfo, NormalActivation );
+	err = mDNS_RegisterInterface( inMDNS, &ifd->interfaceInfo, mDNSfalse );
 	require_noerr( err, exit );
 	ifd->hostRegistered = mDNStrue;
 	
@@ -2880,7 +2875,7 @@ mDNSlocal mStatus	TearDownInterface( mDNS * const inMDNS, mDNSInterfaceData *inI
 	if( inIFD->hostRegistered )
 	{
 		inIFD->hostRegistered = mDNSfalse;
-		mDNS_DeregisterInterface( inMDNS, &inIFD->interfaceInfo, NormalActivation );
+		mDNS_DeregisterInterface( inMDNS, &inIFD->interfaceInfo, mDNSfalse );
 	}
 	
 	// Tear down the multicast socket.
@@ -2937,7 +2932,7 @@ mDNSlocal mStatus	SetupSocket( mDNS * const inMDNS, const struct sockaddr *inAdd
 	// Turn on reuse address option so multiple servers can listen for Multicast DNS packets,
 	// if we're creating a multicast socket
 	
-	if ( !mDNSIPPortIsZero( port ) )
+	if ( port.NotAnInteger )
 	{
 		option = 1;
 		err = setsockopt( sock, SOL_SOCKET, SO_REUSEADDR, (char *) &option, sizeof( option ) );
@@ -2988,7 +2983,7 @@ mDNSlocal mStatus	SetupSocket( mDNS * const inMDNS, const struct sockaddr *inAdd
 		err = setsockopt( sock, IPPROTO_IP, IP_PKTINFO, (char *) &option, sizeof( option ) );
 		check_translated_errno( err == 0, errno_compat(), kOptionErr );
 		
-		if ( !mDNSIPPortIsZero( port ) )
+		if (port.NotAnInteger)
 		{
 			// Join the all-DNS multicast group so we receive Multicast DNS packets
 
@@ -3059,7 +3054,7 @@ mDNSlocal mStatus	SetupSocket( mDNS * const inMDNS, const struct sockaddr *inAdd
 			check_translated_errno( err == 0, errno_compat(), kOptionErr );		
 		#endif
 		
-		if ( !mDNSIPPortIsZero( port ) )
+		if ( port.NotAnInteger )
 		{
 			// Join the all-DNS multicast group so we receive Multicast DNS packets.
 		
@@ -3163,81 +3158,69 @@ mDNSlocal mStatus	SockAddrToMDNSAddr( const struct sockaddr * const inSA, mDNSAd
 	return( err );
 }
 
+
 #if 0
 #pragma mark -
 #endif
 
 //===========================================================================================================================
-//	UDPSocketNotification
+//	UDPBeginRecv
 //===========================================================================================================================
 
-mDNSlocal void CALLBACK
-UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
+mDNSlocal OSStatus UDPBeginRecv( UDPSocket * sock )
 {
-	UDPSocket				*udpSock = ( UDPSocket* ) context;
-	WSAMSG					wmsg;
-	WSABUF					wbuf;
-	struct sockaddr_storage	sockSrcAddr;		// This is filled in by the WSARecv* function
-	INT						sockSrcAddrLen;		// See above
-	mDNSAddr				srcAddr;
-	mDNSInterfaceID			iid;
-	mDNSIPPort				srcPort;
-	mDNSAddr				dstAddr;
-	mDNSIPPort				dstPort;
-	uint8_t					controlBuffer[ 128 ];
-	mDNSu8				*	end;
-	int						num;
-	DWORD					numTries;
-	mStatus					err;
+	DWORD	size;
+	DWORD	numTries;
+	mStatus	err;
 
-	DEBUG_UNUSED( sock );
-	DEBUG_UNUSED( event );
-
-	require_action( udpSock != NULL, exit, err = mStatus_BadStateErr );
-
-	dlog( kDebugLevelChatty, DEBUG_NAME "%s: sock = %d\n", __ROUTINE__, udpSock->fd );
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: sock = %d\n", __ROUTINE__, sock->fd );
+	
+	require_action( sock != NULL, exit, err = mStatus_BadStateErr );
+	check( !sock->overlapped.pending );
 	
 	// Initialize the buffer structure
 
-	wbuf.buf		= (char *) &udpSock->packet;
-	wbuf.len		= (u_long) sizeof( udpSock->packet );
-	sockSrcAddrLen	= sizeof( sockSrcAddr );
+	sock->overlapped.wbuf.buf	= (char *) &sock->packet;
+	sock->overlapped.wbuf.len	= (u_long) sizeof( sock->packet );
+	sock->srcAddrLen			= sizeof( sock->srcAddr );
+
+	// Initialize the overlapped structure
+
+	ZeroMemory( &sock->overlapped.data, sizeof( OVERLAPPED ) );
+	sock->overlapped.data.hEvent = sock;
 
 	numTries = 0;
 
 	do
 	{
-		if ( udpSock->recvMsgPtr )
+		if ( sock->recvMsgPtr )
 		{
-			DWORD size;
+			sock->wmsg.name				= ( LPSOCKADDR ) &sock->srcAddr;
+			sock->wmsg.namelen			= sock->srcAddrLen;
+			sock->wmsg.lpBuffers		= &sock->overlapped.wbuf;
+			sock->wmsg.dwBufferCount	= 1;
+			sock->wmsg.Control.buf		= ( CHAR* ) sock->controlBuffer;
+			sock->wmsg.Control.len		= sizeof( sock->controlBuffer );
+			sock->wmsg.dwFlags			= 0;
 
-			wmsg.name			= ( LPSOCKADDR ) &sockSrcAddr;
-			wmsg.namelen		= sockSrcAddrLen;
-			wmsg.lpBuffers		= &wbuf;
-			wmsg.dwBufferCount	= 1;
-			wmsg.Control.buf	= ( CHAR* ) controlBuffer;
-			wmsg.Control.len	= sizeof( controlBuffer );
-			wmsg.dwFlags		= 0;
-
-			err = udpSock->recvMsgPtr( udpSock->fd, &wmsg, &size, NULL, NULL );
-			err = translate_errno( ( err == 0 ), (OSStatus) WSAGetLastError(), kUnknownErr ); 
-			num = ( int ) size;
+			err = sock->recvMsgPtr( sock->fd, &sock->wmsg, &size, &sock->overlapped.data, ( LPWSAOVERLAPPED_COMPLETION_ROUTINE ) UDPEndRecv );
+			err = translate_errno( ( err == 0 ) || ( WSAGetLastError() == WSA_IO_PENDING ), (OSStatus) WSAGetLastError(), kUnknownErr ); 
 
 			// <rdar://problem/7824093> iTunes 9.1 fails to install with Bonjour service on Windows 7 Ultimate
 			//
-			// There seems to be a bug in some network device drivers that involves calling WSARecvMsg().
-			// Although all the parameters to WSARecvMsg() are correct, it returns a
+			// There seems to be a bug in some network device drivers that involves calling WSARecvMsg() in
+			// overlapped i/o mode. Although all the parameters to WSARecvMsg() are correct, it returns a
 			// WSAEFAULT error code when there is no actual error. We have found experientially that falling
 			// back to using WSARecvFrom() when this happens will work correctly.
 
-			if ( err == WSAEFAULT ) udpSock->recvMsgPtr = NULL;
+			if ( err == WSAEFAULT ) sock->recvMsgPtr = NULL;
 		}
 		else
 		{
 			DWORD flags = 0;
 
-			num = WSARecvFrom( udpSock->fd, &wbuf, 1, NULL, &flags, ( LPSOCKADDR ) &sockSrcAddr, &sockSrcAddrLen, NULL, NULL );
-			err = translate_errno( ( num >= 0 ), ( OSStatus ) WSAGetLastError(), kUnknownErr );
+			err = WSARecvFrom( sock->fd, &sock->overlapped.wbuf, 1, NULL, &flags, ( LPSOCKADDR ) &sock->srcAddr, &sock->srcAddrLen, &sock->overlapped.data, ( LPWSAOVERLAPPED_COMPLETION_ROUTINE ) UDPEndRecv );
+			err = translate_errno( ( err == 0 ) || ( WSAGetLastError() == WSA_IO_PENDING ), ( OSStatus ) WSAGetLastError(), kUnknownErr );
 		}
 
 		// According to MSDN <http://msdn.microsoft.com/en-us/library/ms741687(VS.85).aspx>:
@@ -3252,21 +3235,53 @@ UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 		require_action( !err || ( err == WSAECONNRESET ) || ( err == WSAEFAULT ), exit, err = WSAGetLastError() );
 	}
 	while ( ( ( err == WSAECONNRESET ) || ( err == WSAEFAULT ) ) && ( numTries++ < 100 ) );
+
+	sock->overlapped.pending = TRUE;
+
+exit:
+
+	if ( err )
+	{
+		LogMsg( "WSARecvMsg failed (%d)\n", err );
+	}
+
+	return err;
+}
+
+
+//===========================================================================================================================
+//	UDPEndRecv
+//===========================================================================================================================
+
+mDNSlocal void CALLBACK UDPEndRecv( DWORD err, DWORD bytesTransferred, LPWSAOVERLAPPED overlapped, DWORD flags )
+{
+	UDPSocket * sock = NULL;
+
+	( void ) flags;
 	
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: err = %d, bytesTransferred = %d\n", __ROUTINE__, err, bytesTransferred );
+	require_action_quiet( err != WSA_OPERATION_ABORTED, exit, err = ( DWORD ) kUnknownErr );
 	require_noerr( err, exit );
+	sock = ( overlapped != NULL ) ? overlapped->hEvent : NULL;
+	require_action( sock != NULL, exit, err = ( DWORD ) kUnknownErr );
+	dlog( kDebugLevelChatty, DEBUG_NAME "%s: sock = %d\n", __ROUTINE__, sock->fd );
+	sock->overlapped.error				= err;
+	sock->overlapped.bytesTransferred	= bytesTransferred;
+	check( sock->overlapped.pending );
+	sock->overlapped.pending			= FALSE;
 	
 	// Translate the source of this packet into mDNS data types
 
-	SockAddrToMDNSAddr( (struct sockaddr* ) &sockSrcAddr, &srcAddr, &srcPort );
+	SockAddrToMDNSAddr( (struct sockaddr *) &sock->srcAddr, &sock->overlapped.srcAddr, &sock->overlapped.srcPort );
 	
 	// Initialize the destination of this packet. Just in case
 	// we can't determine this info because we couldn't call
 	// WSARecvMsg (recvMsgPtr)
 
-	dstAddr = udpSock->addr;
-	dstPort = udpSock->port;
+	sock->overlapped.dstAddr = sock->addr;
+	sock->overlapped.dstPort = sock->port;
 
-	if ( udpSock->recvMsgPtr )
+	if ( sock->recvMsgPtr )
 	{
 		LPWSACMSGHDR	header;
 		LPWSACMSGHDR	last = NULL;
@@ -3285,7 +3300,7 @@ UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 		// after 100 iterations, just in case the corruption isn't caught by the first
 		// check.
 
-		for ( header = WSA_CMSG_FIRSTHDR( &wmsg ); header; header = WSA_CMSG_NXTHDR( &wmsg, header ) )
+		for ( header = WSA_CMSG_FIRSTHDR( &sock->wmsg ); header; header = WSA_CMSG_NXTHDR( &sock->wmsg, header ) )
 		{
 			if ( ( header != last ) && ( ++count < 100 ) )
 			{
@@ -3297,13 +3312,13 @@ UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 					
 					ipv4PacketInfo = (IN_PKTINFO *) WSA_CMSG_DATA( header );
 
-					if ( udpSock->ifd != NULL )
+					if ( sock->ifd != NULL )
 					{
-						require_action( ipv4PacketInfo->ipi_ifindex == udpSock->ifd->index, exit, err = ( DWORD ) kMismatchErr );
+						require_action( ipv4PacketInfo->ipi_ifindex == sock->ifd->index, exit, err = ( DWORD ) kMismatchErr );
 					}
 
-					dstAddr.type 				= mDNSAddrType_IPv4;
-					dstAddr.ip.v4.NotAnInteger	= ipv4PacketInfo->ipi_addr.s_addr;
+					sock->overlapped.dstAddr.type 				= mDNSAddrType_IPv4;
+					sock->overlapped.dstAddr.ip.v4.NotAnInteger	= ipv4PacketInfo->ipi_addr.s_addr;
 				}
 				else if( ( header->cmsg_level == IPPROTO_IPV6 ) && ( header->cmsg_type == IPV6_PKTINFO ) )
 				{
@@ -3311,13 +3326,13 @@ UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 						
 					ipv6PacketInfo = (IN6_PKTINFO *) WSA_CMSG_DATA( header );
 		
-					if ( udpSock->ifd != NULL )
+					if ( sock->ifd != NULL )
 					{
-						require_action( ipv6PacketInfo->ipi6_ifindex == ( udpSock->ifd->index - kIPv6IfIndexBase ), exit, err = ( DWORD ) kMismatchErr );
+						require_action( ipv6PacketInfo->ipi6_ifindex == ( sock->ifd->index - kIPv6IfIndexBase ), exit, err = ( DWORD ) kMismatchErr );
 					}
 
-					dstAddr.type	= mDNSAddrType_IPv6;
-					dstAddr.ip.v6	= *( (mDNSv6Addr *) &ipv6PacketInfo->ipi6_addr );
+					sock->overlapped.dstAddr.type	= mDNSAddrType_IPv6;
+					sock->overlapped.dstAddr.ip.v6	= *( (mDNSv6Addr *) &ipv6PacketInfo->ipi6_addr );
 				}
 			}
 			else
@@ -3336,26 +3351,26 @@ UDPSocketNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 	}
 
 	dlog( kDebugLevelChatty, DEBUG_NAME "packet received\n" );
-	dlog( kDebugLevelChatty, DEBUG_NAME "    size      = %d\n", num );
-	dlog( kDebugLevelChatty, DEBUG_NAME "    src       = %#a:%u\n", &srcAddr, ntohs( srcPort.NotAnInteger ) );
-	dlog( kDebugLevelChatty, DEBUG_NAME "    dst       = %#a:%u\n", &dstAddr, ntohs( dstPort.NotAnInteger ) );
+	dlog( kDebugLevelChatty, DEBUG_NAME "    size      = %d\n", bytesTransferred );
+	dlog( kDebugLevelChatty, DEBUG_NAME "    src       = %#a:%u\n", &sock->overlapped.srcAddr, ntohs( sock->overlapped.srcPort.NotAnInteger ) );
+	dlog( kDebugLevelChatty, DEBUG_NAME "    dst       = %#a:%u\n", &sock->overlapped.dstAddr, ntohs( sock->overlapped.dstPort.NotAnInteger ) );
 	
-	if ( udpSock->ifd != NULL )
+	if ( sock->ifd != NULL )
 	{
-		dlog( kDebugLevelChatty, DEBUG_NAME "    interface = %#a (index=0x%08X)\n", &udpSock->ifd->interfaceInfo.ip, udpSock->ifd->index );
+		dlog( kDebugLevelChatty, DEBUG_NAME "    interface = %#a (index=0x%08X)\n", &sock->ifd->interfaceInfo.ip, sock->ifd->index );
 	}
 
 	dlog( kDebugLevelChatty, DEBUG_NAME "\n" );
 
-	iid = udpSock->ifd ? udpSock->ifd->interfaceInfo.InterfaceID : NULL;
-	end = ( (mDNSu8 *) &udpSock->packet ) + num;
-
-	mDNSCoreReceive( udpSock->m, &udpSock->packet, end, &srcAddr, srcPort, &dstAddr, dstPort, iid );
+	// Queue this socket
+	
+	AddToTail( &gUDPDispatchableSockets, sock );
 
 exit:
 
 	return;
 }
+
 
 //===========================================================================================================================
 //	InterfaceListDidChange
@@ -3387,6 +3402,7 @@ void InterfaceListDidChange( mDNS * const inMDNS )
 	mDNSCoreMachineSleep( inMDNS, mDNSfalse ); // What is this for? Mac OS X does not do this
 }
 
+
 //===========================================================================================================================
 //	ComputerDescriptionDidChange
 //===========================================================================================================================
@@ -3398,6 +3414,7 @@ void ComputerDescriptionDidChange( mDNS * const inMDNS )
 	// redo the names
 	SetupNiceName( inMDNS );
 }
+
 
 //===========================================================================================================================
 //	TCPIPConfigDidChange
@@ -3412,6 +3429,7 @@ void TCPIPConfigDidChange( mDNS * const inMDNS )
 	err = uDNS_SetupDNSConfig( inMDNS );
 	check_noerr( err );
 }
+
 
 //===========================================================================================================================
 //	DynDNSConfigDidChange
@@ -3429,6 +3447,7 @@ void DynDNSConfigDidChange( mDNS * const inMDNS )
 	check_noerr( err );
 }
 
+
 //===========================================================================================================================
 //	FileSharingDidChange
 //===========================================================================================================================
@@ -3440,6 +3459,7 @@ void FileSharingDidChange( mDNS * const inMDNS )
 	CheckFileShares( inMDNS );
 }
 
+
 //===========================================================================================================================
 //	FilewallDidChange
 //===========================================================================================================================
@@ -3450,6 +3470,7 @@ void FirewallDidChange( mDNS * const inMDNS )
 
 	CheckFileShares( inMDNS );
 }
+
 
 #if 0
 #pragma mark -
@@ -3609,7 +3630,9 @@ mDNSlocal int	getifaddrs_ipv6( struct ifaddrs **outAddrs )
 		for( addrIndex = 0, addr = iaa->FirstUnicastAddress; addr; ++addrIndex, addr = addr->Next )
 		{			
 			int						family;
+			int						prefixIndex;
 			IP_ADAPTER_PREFIX *		prefix;
+			ULONG					prefixLength;
 			uint32_t				ipv4Index;
 			struct sockaddr_in		ipv4Netmask;
 
@@ -3721,8 +3744,18 @@ mDNSlocal int	getifaddrs_ipv6( struct ifaddrs **outAddrs )
 			check( ifa->ifa_addr );
 			
 			// Get subnet mask (IPv4)/link prefix (IPv6). It is specified as a bit length (e.g. 24 for 255.255.255.0).
-
-			switch ( family )
+			
+			prefixLength = 0;
+			for( prefixIndex = 0, prefix = firstPrefix; prefix; ++prefixIndex, prefix = prefix->Next )
+			{
+				if( ( prefix->Address.lpSockaddr->sa_family == family ) && ( prefixIndex == addrIndex ) )
+				{
+					check_string( prefix->Address.lpSockaddr->sa_family == family, "addr family != netmask family" );
+					prefixLength = prefix->PrefixLength;
+					break;
+				}
+			}
+			switch( family )
 			{
 				case AF_INET:
 				{
@@ -3737,75 +3770,33 @@ mDNSlocal int	getifaddrs_ipv6( struct ifaddrs **outAddrs )
 					ifa->ifa_netmask = (struct sockaddr *) sa4;
 					break;
 				}
-
+				
 				case AF_INET6:
 				{
-					struct sockaddr_in6 *sa6;
-					char buf[ 256 ] = { 0 };
-					DWORD buflen = sizeof( buf );
-
+					struct sockaddr_in6 *		sa6;
+					int							len;
+					int							maskIndex;
+					uint8_t						maskByte;
+					
+					require_action( prefixLength <= 128, exit, err = ERROR_INVALID_DATA );
+					
 					sa6 = (struct sockaddr_in6 *) calloc( 1, sizeof( *sa6 ) );
 					require_action( sa6, exit, err = WSAENOBUFS );
 					sa6->sin6_family = AF_INET6;
-					memset( sa6->sin6_addr.s6_addr, 0xFF, sizeof( sa6->sin6_addr.s6_addr ) );
-					ifa->ifa_netmask = (struct sockaddr *) sa6;
-
-					for ( prefix = firstPrefix; prefix; prefix = prefix->Next )
+					
+					if( prefixLength == 0 )
 					{
-						IN6_ADDR	mask;
-						IN6_ADDR	maskedAddr;
-						int			maskIndex;
-						DWORD		len;
-
-						// According to MSDN:
-						// "On Windows Vista and later, the linked IP_ADAPTER_PREFIX structures pointed to by the FirstPrefix member
-						// include three IP adapter prefixes for each IP address assigned to the adapter. These include the host IP address prefix,
-						// the subnet IP address prefix, and the subnet broadcast IP address prefix.
-						// In addition, for each adapter there is a multicast address prefix and a broadcast address prefix.
-						// On Windows XP with SP1 and later prior to Windows Vista, the linked IP_ADAPTER_PREFIX structures pointed to by the FirstPrefix member
-						// include only a single IP adapter prefix for each IP address assigned to the adapter."
-						
-						// We're only interested in the subnet IP address prefix.  We'll determine if the prefix is the
-						// subnet prefix by masking our address with a mask (computed from the prefix length) and see if that is the same
-						// as the prefix address.
-
-						if ( ( prefix->PrefixLength == 0 ) ||
-						     ( prefix->PrefixLength > 128 ) ||
-						     ( addr->Address.iSockaddrLength != prefix->Address.iSockaddrLength ) ||
-							 ( memcmp( addr->Address.lpSockaddr, prefix->Address.lpSockaddr, addr->Address.iSockaddrLength ) == 0 ) )
-						{
-							continue;
-						}
-
-						// Compute the mask
-
-						memset( mask.s6_addr, 0, sizeof( mask.s6_addr ) );
-
-						for ( len = (int) prefix->PrefixLength, maskIndex = 0; len > 0; len -= 8 )
-						{
-							uint8_t maskByte = ( len >= 8 ) ? 0xFF : (uint8_t)( ( 0xFFU << ( 8 - len ) ) & 0xFFU );
-							mask.s6_addr[ maskIndex++ ] = maskByte;
-						}
-
-						// Apply the mask
-
-						for ( i = 0; i < 16; i++ )
-						{
-							maskedAddr.s6_addr[ i ] = ( ( struct sockaddr_in6* ) addr->Address.lpSockaddr )->sin6_addr.s6_addr[ i ] & mask.s6_addr[ i ];
-						}
-
-						// Compare
-
-						if ( memcmp( ( ( struct sockaddr_in6* ) prefix->Address.lpSockaddr )->sin6_addr.s6_addr, maskedAddr.s6_addr, sizeof( maskedAddr.s6_addr ) ) == 0 )
-						{
-							memcpy( sa6->sin6_addr.s6_addr, mask.s6_addr, sizeof( mask.s6_addr ) );
-							break;
-						}
+						dlog( kDebugLevelWarning, DEBUG_NAME "%s: IPv6 link prefix 0, defaulting to /128\n", __ROUTINE__ );
+						prefixLength = 128;
 					}
-
-					WSAAddressToStringA( ( LPSOCKADDR ) sa6, sizeof( struct sockaddr_in6 ), NULL, buf, &buflen );
-					dlog( kDebugLevelInfo, DEBUG_NAME "%s: IPv6 mask = %s\n", __ROUTINE__, buf );				
-
+					maskIndex = 0;
+					for( len = (int) prefixLength; len > 0; len -= 8 )
+					{
+						if( len >= 8 ) maskByte = 0xFF;
+						else		   maskByte = (uint8_t)( ( 0xFFU << ( 8 - len ) ) & 0xFFU );
+						sa6->sin6_addr.s6_addr[ maskIndex++ ] = maskByte;
+					}
+					ifa->ifa_netmask = (struct sockaddr *) sa6;
 					break;
 				}
 				
@@ -3928,7 +3919,7 @@ mDNSlocal int	getifaddrs_ipv4( struct ifaddrs **outAddrs )
 		
 		ifa->ifa_name = (char *) malloc( 16 );
 		require_action( ifa->ifa_name, exit, err = WSAENOBUFS );
-		_snprintf( ifa->ifa_name, 16, "%d", i + 1 );
+		sprintf( ifa->ifa_name, "%d", i + 1 );
 		
 		// Get interface flags.
 		
@@ -4038,6 +4029,7 @@ mDNSlocal void	freeifaddrs( struct ifaddrs *inIFAs )
 	}
 }
 
+
 //===========================================================================================================================
 //	GetPrimaryInterface
 //===========================================================================================================================
@@ -4068,6 +4060,7 @@ GetPrimaryInterface()
 	err = GetIpForwardTable(pIpForwardTable, &dwSize, bOrder);
 	require_noerr( err, exit );
 
+
 	// Search for the row in the table we want.
 
 	for ( i = 0; i < pIpForwardTable->dwNumEntries; i++)
@@ -4095,6 +4088,7 @@ exit:
 
 	return index;
 }
+
 
 //===========================================================================================================================
 //	AddressToIndexAndMask
@@ -4156,6 +4150,7 @@ exit:
 	return err;
 }
 
+
 //===========================================================================================================================
 //	CanReceiveUnicast
 //===========================================================================================================================
@@ -4185,6 +4180,7 @@ mDNSlocal mDNSBool	CanReceiveUnicast( void )
 	dlog( kDebugLevelInfo, DEBUG_NAME "Unicast UDP responses %s\n", ok ? "okay" : "*not allowed*" );
 	return( ok );
 }
+
 
 //===========================================================================================================================
 //	IsPointToPoint
@@ -4226,6 +4222,7 @@ exit:
 
 	return ret;
 }
+
 
 //===========================================================================================================================
 //	GetWindowsVersionString
@@ -4327,6 +4324,7 @@ exit:
 	return( err );
 }
 
+
 //===========================================================================================================================
 //	RegQueryString
 //===========================================================================================================================
@@ -4375,6 +4373,7 @@ exit:
 	return err;
 }
 
+
 //===========================================================================================================================
 //	StringToAddress
 //===========================================================================================================================
@@ -4414,6 +4413,7 @@ exit:
 	return err;
 }
 
+
 //===========================================================================================================================
 //	myGetIfAddrs
 //===========================================================================================================================
@@ -4437,6 +4437,7 @@ myGetIfAddrs(int refresh)
 	return ifa;
 }
 
+
 //===========================================================================================================================
 //	TCHARtoUTF8
 //===========================================================================================================================
@@ -4458,6 +4459,7 @@ exit:
 	return( WindowsLatin1toUTF8( inString, inBuffer, inBufferSize ) );
 #endif
 }
+
 
 //===========================================================================================================================
 //	WindowsLatin1toUTF8
@@ -4496,6 +4498,7 @@ exit:
 	return( err );
 }
 
+
 //===========================================================================================================================
 //	TCPCloseSocket
 //===========================================================================================================================
@@ -4505,12 +4508,42 @@ TCPCloseSocket( TCPSocket * sock )
 {
 	dlog( kDebugLevelChatty, DEBUG_NAME "closing TCPSocket 0x%x:%d\n", sock, sock->fd );
 
+	RemoveFromList( &gTCPDispatchableSockets, sock );	
+
 	if ( sock->fd != INVALID_SOCKET )
 	{
 		closesocket( sock->fd );
 		sock->fd = INVALID_SOCKET;
 	}
 }
+
+
+//===========================================================================================================================
+//	TCPFreeSocket
+//===========================================================================================================================
+
+mDNSlocal void CALLBACK
+TCPFreeSocket( TCPSocket *sock )
+{
+	check( sock );
+
+	dlog( kDebugLevelChatty, DEBUG_NAME "freeing TCPSocket 0x%x:%d\n", sock, sock->fd );
+	
+	if ( sock->connectEvent )
+	{
+		CloseHandle( sock->connectEvent );
+		sock->connectEvent = NULL;
+	}
+
+	if ( sock->fd != INVALID_SOCKET )
+	{
+		closesocket( sock->fd );
+		sock->fd = INVALID_SOCKET;
+	}
+
+	free( sock );
+}
+
 
 //===========================================================================================================================
 //  UDPCloseSocket
@@ -4521,12 +4554,34 @@ UDPCloseSocket( UDPSocket * sock )
 {
 	dlog( kDebugLevelChatty, DEBUG_NAME "closing UDPSocket %d\n", sock->fd );
 
+	RemoveFromList( &gUDPDispatchableSockets, sock );
+
 	if ( sock->fd != INVALID_SOCKET )
 	{
-		mDNSPollUnregisterSocket( sock->fd );
 		closesocket( sock->fd );
 		sock->fd = INVALID_SOCKET;
 	}
+}
+
+
+//===========================================================================================================================
+//  UDPFreeSocket
+//===========================================================================================================================
+
+mDNSlocal void CALLBACK
+UDPFreeSocket( UDPSocket * sock )
+{
+    check( sock );
+
+	dlog( kDebugLevelChatty, DEBUG_NAME "freeing UDPSocket %d\n", sock->fd );
+
+    if ( sock->fd != INVALID_SOCKET )
+    {		
+        closesocket( sock->fd );
+		sock->fd = INVALID_SOCKET;
+    }
+
+    free( sock );
 }
 
 //===========================================================================================================================
@@ -4557,6 +4612,7 @@ mDNSlocal mStatus SetupAddr(mDNSAddr *ip, const struct sockaddr *const sa)
 	LogMsg("SetupAddr invalid sa_family %d", sa->sa_family);
 	return(mStatus_Invalid);
 	}
+
 
 mDNSlocal void GetDDNSFQDN( domainname *const fqdn )
 {
@@ -4600,6 +4656,7 @@ exit:
 		name = NULL;
 	}
 }
+
 
 #ifdef UNICODE
 mDNSlocal void GetDDNSDomains( DNameListElem ** domains, LPCWSTR lpSubKey )
@@ -4684,6 +4741,7 @@ exit:
 	}
 }
 
+
 mDNSlocal void SetDomainSecret( mDNS * const m, const domainname * inDomain )
 {
 	char					domainUTF8[ 256 ];
@@ -4719,7 +4777,7 @@ mDNSlocal void SetDomainSecret( mDNS * const m, const domainname * inDomain )
 			require_action( ptr, exit, err = mStatus_NoMemoryErr );
 		}
 
-		err = mDNS_SetSecretForDomain(m, ptr, &domain, &key, outSecret, NULL, NULL, FALSE );
+		err = mDNS_SetSecretForDomain(m, ptr, &domain, &key, outSecret, NULL, 0, NULL );
 		require_action( err != mStatus_BadParamErr, exit, if (!foundInList ) mDNSPlatformMemFree( ptr ) );
 
 		debugf("Setting shared secret for zone %s with key %##s", outDomain, key.c);
@@ -4729,6 +4787,7 @@ exit:
 
 	return;
 }
+
 
 mDNSlocal VOID CALLBACK
 CheckFileSharesProc( LPVOID arg, DWORD dwTimerLowValue, DWORD dwTimerHighValue )
@@ -4740,6 +4799,7 @@ CheckFileSharesProc( LPVOID arg, DWORD dwTimerLowValue, DWORD dwTimerHighValue )
 
 	CheckFileShares( m );
 }
+
 
 mDNSlocal unsigned __stdcall 
 SMBRegistrationThread( void * arg )
@@ -4828,6 +4888,7 @@ exit:
 	_endthreadex( 0 );
 	return 0;
 }
+
 
 mDNSlocal void
 CheckFileShares( mDNS * const m )
@@ -4982,6 +5043,7 @@ exit:
 	}
 }
 
+
 BOOL
 IsWOMPEnabled( mDNS * const m )
 {
@@ -5002,6 +5064,7 @@ IsWOMPEnabled( mDNS * const m )
 
 	return enabled;
 }
+
 
 mDNSlocal mDNSu8
 IsWOMPEnabledForAdapter( const char * adapterName )
@@ -5052,69 +5115,86 @@ exit:
 	return ( mDNSu8 ) ok;
 }
 
-mDNSlocal void
-SendWakeupPacket( mDNS * const inMDNS, LPSOCKADDR addr, INT addrlen, const char * buf, INT buflen, INT numTries, INT msecSleep )
+
+void
+DispatchSocketEvents( mDNS * const inMDNS )
 {
-	mDNSBool	repeat = ( numTries == 1 ) ? mDNStrue : mDNSfalse;
-	SOCKET		sock;
-	int			num;
-	mStatus		err;
+	UDPSocket * udpSock;
+	TCPSocket * tcpSock;
 
-	( void ) inMDNS;
-
-	sock = socket( addr->sa_family, SOCK_DGRAM, IPPROTO_UDP );
-	require_action( sock != INVALID_SOCKET, exit, err = mStatus_UnknownErr );
-
-	while ( numTries-- )
+	while ( ( udpSock = ( UDPSocket* ) gUDPDispatchableSockets.Head ) != NULL )
 	{
-		num = sendto( sock, ( const char* ) buf, buflen, 0, addr, addrlen );
-
-		if ( num != buflen )
-		{
-			LogMsg( "SendWakeupPacket error: sent %d bytes: %d\n", num, WSAGetLastError() );
-		}
-
-		if ( repeat )
-		{
-			num = sendto( sock, buf, buflen, 0, addr, addrlen );
-
-			if ( num != buflen )
-			{
-				LogMsg( "SendWakeupPacket error: sent %d bytes: %d\n", num, WSAGetLastError() );
-			}
-		}
-
-		if ( msecSleep )
-		{
-			Sleep( msecSleep );
-		}
+		dlog( kDebugLevelChatty, DEBUG_NAME "%s: calling DispatchUDPEvent on socket %d, error = %d, bytesTransferred = %d\n",
+		                                     __ROUTINE__, udpSock->fd, udpSock->overlapped.error, udpSock->overlapped.bytesTransferred );
+		RemoveFromList( &gUDPDispatchableSockets, udpSock );
+		DispatchUDPEvent( inMDNS, udpSock );
 	}
-
-exit:
-
-	if ( sock != INVALID_SOCKET )
+		
+	while ( ( tcpSock = ( TCPSocket* ) gTCPDispatchableSockets.Head ) != NULL )
 	{
-		closesocket( sock );
+		dlog( kDebugLevelChatty, DEBUG_NAME "%s: calling DispatchTCPEvent on socket %d, error = %d, bytesTransferred = %d\n",
+		                                     __ROUTINE__, tcpSock->fd, tcpSock->overlapped.error, tcpSock->overlapped.bytesTransferred );
+		RemoveFromList( &gTCPDispatchableSockets, tcpSock );
+		DispatchTCPEvent( inMDNS, tcpSock );
 	}
-} 
-
-mDNSlocal void _cdecl
-SendMulticastWakeupPacket( void *arg )
-{
-	MulticastWakeupStruct *info = ( MulticastWakeupStruct* ) arg;
-	
-	if ( info )
-	{
-		SendWakeupPacket( info->inMDNS, ( LPSOCKADDR ) &info->addr, sizeof( info->addr ), ( const char* ) info->data, sizeof( info->data ), info->numTries, info->msecSleep );
-		free( info );
-	}
-
-	_endthread();
 }
 
-mDNSexport void FreeEtcHosts(mDNS *const m, AuthRecord *const rr, mStatus result)
+
+mDNSlocal void
+DispatchUDPEvent( mDNS * const inMDNS, UDPSocket * sock )
 {
-	DEBUG_UNUSED( m );
-	DEBUG_UNUSED( rr );
-	DEBUG_UNUSED( result );
+	( void ) inMDNS;
+
+	// If we've closed the socket, then we want to ignore
+	// this read.  The packet might have been queued before
+	// the socket was closed.
+
+	if ( sock->fd != INVALID_SOCKET )
+	{
+		const mDNSInterfaceID	iid = sock->ifd ? sock->ifd->interfaceInfo.InterfaceID : NULL;
+		mDNSu8				*	end = ( (mDNSu8 *) &sock->packet ) + sock->overlapped.bytesTransferred;
+
+		dlog( kDebugLevelChatty, DEBUG_NAME "calling mDNSCoreReceive on socket: %d\n", sock->fd );
+		mDNSCoreReceive( sock->m, &sock->packet, end, &sock->overlapped.srcAddr, sock->overlapped.srcPort, &sock->overlapped.dstAddr, sock->overlapped.dstPort, iid );
+	}
+
+	// If the socket is still good, then start up another asynchronous read
+
+	if ( sock->fd != INVALID_SOCKET )
+	{
+		int err = UDPBeginRecv( sock );
+		check_noerr( err );
+	}
+}
+
+
+mDNSlocal void
+DispatchTCPEvent( mDNS * const inMDNS, TCPSocket * sock )
+{
+	( void ) inMDNS;
+
+	if ( sock->fd != INVALID_SOCKET )
+	{
+		sock->eptr += sock->overlapped.bytesTransferred;
+		sock->lastError = sock->overlapped.error;
+
+		if ( !sock->overlapped.error && !sock->overlapped.bytesTransferred )
+		{
+			sock->closed = TRUE;
+		}
+
+		if ( sock->readEventHandler != NULL )
+		{
+			dlog( kDebugLevelChatty, DEBUG_NAME "calling TCP read handler  on socket: %d\n", sock->fd );
+			sock->readEventHandler( sock );
+		}
+	}
+
+	// If the socket is still good, then start up another asynchronous read
+
+	if ( !sock->closed && ( sock->fd != INVALID_SOCKET ) )
+	{
+		int err = TCPBeginRecv( sock );
+		check_noerr( err );
+	}
 }

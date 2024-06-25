@@ -21,7 +21,7 @@
 #include	<stdarg.h>
 #include	<stddef.h>
 
-#include	"Poll.h"
+
 #include	"CommonServices.h"
 #include	"DebugServices.h"
 #include	"RegNames.h"
@@ -29,14 +29,13 @@
 #include	"uds_daemon.h"
 #include	"GenLinkedList.h"
 #include	"Service.h"
-#include	"EventLog.h"
+#include	"mDNSWindows/SystemService/EventLog.h"
 
 #include	"Resource.h"
 
 #include	"mDNSEmbeddedAPI.h"
 #include	"uDNS.h"
 #include	"mDNSWin32.h"
-#include	"mDNSDebug.h"
 
 #include	"Firewall.h"
 
@@ -74,13 +73,42 @@
 #define kDefaultRouteMetric					399
 #define kSecondsTo100NSUnits				( 10 * 1000 * 1000 )
 #define kSPSMaintenanceWakePeriod			-30
-#define kWaitToRetry						(60 * 5)
 
 #define RR_CACHE_SIZE 500
 static CacheEntity gRRCache[RR_CACHE_SIZE];
 #if 0
 #pragma mark == Structures ==
 #endif
+
+//===========================================================================================================================
+//	Structures
+//===========================================================================================================================
+
+typedef struct EventSource
+{
+	HANDLE							event;
+	void						*	context;
+	RegisterWaitableEventHandler	handler;
+	struct EventSource			*	next;
+} EventSource;
+
+static BOOL											gEventSourceListChanged = FALSE;
+static EventSource								*	gEventSourceList = NULL;
+static EventSource								*	gCurrentSource = NULL;
+static int											gEventSources = 0;
+
+#define	kWaitListStopEvent							( WAIT_OBJECT_0 + 0 )
+#define	kWaitListInterfaceListChangedEvent			( WAIT_OBJECT_0 + 1 )
+#define kWaitListComputerDescriptionEvent			( WAIT_OBJECT_0 + 2 )
+#define kWaitListTCPIPEvent							( WAIT_OBJECT_0 + 3 )
+#define kWaitListDynDNSEvent						( WAIT_OBJECT_0 + 4 )
+#define kWaitListFileShareEvent						( WAIT_OBJECT_0 + 5 )
+#define kWaitListFirewallEvent						( WAIT_OBJECT_0 + 6 )
+#define kWaitListAdvertisedServicesEvent			( WAIT_OBJECT_0 + 7 )
+#define kWaitListSPSWakeupEvent						( WAIT_OBJECT_0 + 8 )
+#define kWaitListSPSSleepEvent						( WAIT_OBJECT_0 + 9 )
+#define	kWaitListFixedItemCount						10
+
 
 #if 0
 #pragma mark == Prototypes ==
@@ -89,55 +117,46 @@ static CacheEntity gRRCache[RR_CACHE_SIZE];
 //===========================================================================================================================
 //	Prototypes
 //===========================================================================================================================
-static void				Usage( void );
-static BOOL WINAPI		ConsoleControlHandler( DWORD inControlEvent );
-static OSStatus			InstallService( LPCTSTR inName, LPCTSTR inDisplayName, LPCTSTR inDescription, LPCTSTR inPath );
-static OSStatus			RemoveService( LPCTSTR inName );
-static OSStatus			SetServiceParameters();
-static OSStatus			GetServiceParameters();
-static OSStatus			CheckFirewall();
-static OSStatus			SetServiceInfo( SC_HANDLE inSCM, LPCTSTR inServiceName, LPCTSTR inDescription );
-static void				ReportStatus( int inType, const char *inFormat, ... );
+static void			Usage( void );
+static BOOL WINAPI	ConsoleControlHandler( DWORD inControlEvent );
+static OSStatus		InstallService( LPCTSTR inName, LPCTSTR inDisplayName, LPCTSTR inDescription, LPCTSTR inPath );
+static OSStatus		RemoveService( LPCTSTR inName );
+static OSStatus		SetServiceParameters();
+static OSStatus		GetServiceParameters();
+static OSStatus		CheckFirewall();
+static OSStatus		SetServiceInfo( SC_HANDLE inSCM, LPCTSTR inServiceName, LPCTSTR inDescription );
+static void			ReportStatus( int inType, const char *inFormat, ... );
 
-static void WINAPI		ServiceMain( DWORD argc, LPTSTR argv[] );
-static OSStatus			ServiceSetupEventLogging( void );
-static DWORD WINAPI		ServiceControlHandler( DWORD inControl, DWORD inEventType, LPVOID inEventData, LPVOID inContext );
+static void WINAPI	ServiceMain( DWORD argc, LPTSTR argv[] );
+static OSStatus		ServiceSetupEventLogging( void );
+static DWORD WINAPI	ServiceControlHandler( DWORD inControl, DWORD inEventType, LPVOID inEventData, LPVOID inContext );
 
-static OSStatus			ServiceRun( int argc, LPTSTR argv[] );
-static void				ServiceStop( void );
+static OSStatus		ServiceRun( int argc, LPTSTR argv[] );
+static void			ServiceStop( void );
 
-static OSStatus			ServiceSpecificInitialize( int argc, LPTSTR  argv[] );
-static OSStatus			ServiceSpecificRun( int argc, LPTSTR argv[] );
-static OSStatus			ServiceSpecificStop( void );
-static void				ServiceSpecificFinalize( int argc, LPTSTR argv[] );
-static mStatus			SetupServiceEvents();
-static mStatus			TearDownServiceEvents();
-static mStatus			SetupNotifications();
-static mStatus			TearDownNotifications();
-static void CALLBACK	StopNotification( HANDLE event, void * context );
-static void CALLBACK	PowerSuspendNotification( HANDLE event, void * context );
-static void	CALLBACK	PowerResumeNotification( HANDLE event, void * context );
-static void CALLBACK	InterfaceListNotification( SOCKET socket, LPWSANETWORKEVENTS event, void *context );
-static void CALLBACK	ComputerDescriptionNotification( HANDLE event, void *context );
-static void CALLBACK	TCPChangedNotification( HANDLE event, void *context );
-static void CALLBACK	DDNSChangedNotification( HANDLE event, void *context );
-static void CALLBACK	FileSharingChangedNotification( HANDLE event, void *context );
-static void CALLBACK	FirewallChangedNotification( HANDLE event, void *context );
-static void CALLBACK	AdvertisedServicesChangedNotification( HANDLE event, void *context );
-static void CALLBACK	SPSWakeupNotification( HANDLE event, void *context );
-static void	CALLBACK	SPSSleepNotification( HANDLE event, void *context );
-static void CALLBACK	UDSAcceptNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context );
-static void CALLBACK	UDSReadNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context );
-static void				CoreCallback(mDNS * const inMDNS, mStatus result);
-static mDNSu8			SystemWakeForNetworkAccess( LARGE_INTEGER * timeout );
-static OSStatus			GetRouteDestination(DWORD * ifIndex, DWORD * address);
-static OSStatus			SetLLRoute( mDNS * const inMDNS );
-static bool				HaveRoute( PMIB_IPFORWARDROW rowExtant, unsigned long addr, unsigned long metric );
-static bool				IsValidAddress( const char * addr );
-static bool				IsNortelVPN( IP_ADAPTER_INFO * pAdapter );
-static bool				IsJuniperVPN( IP_ADAPTER_INFO * pAdapter );
-static bool				IsCiscoVPN( IP_ADAPTER_INFO * pAdapter );
-static const char *		strnistr( const char * string, const char * subString, size_t max );
+static OSStatus		ServiceSpecificInitialize( int argc, LPTSTR  argv[] );
+static OSStatus		ServiceSpecificRun( int argc, LPTSTR argv[] );
+static OSStatus		ServiceSpecificStop( void );
+static void			ServiceSpecificFinalize( int argc, LPTSTR argv[] );
+static mStatus		SetupNotifications();
+static mStatus		TearDownNotifications();
+static mStatus		RegisterWaitableEvent( mDNS * const inMDNS, HANDLE event, void * context, RegisterWaitableEventHandler handler );
+static void			UnregisterWaitableEvent( mDNS * const inMDNS, HANDLE event );
+static mStatus		SetupWaitList( mDNS * const inMDNS, HANDLE **outWaitList, int *outWaitListCount );
+static void			UDSCanAccept( mDNS * const inMDNS, HANDLE event, void * context );
+static void			UDSCanRead( TCPSocket * sock );
+static void			HandlePowerSuspend( void * v );
+static void			HandlePowerResumeSuspend( void * v );
+static void			CoreCallback(mDNS * const inMDNS, mStatus result);
+static mDNSu8		SystemWakeForNetworkAccess( LARGE_INTEGER * timeout );
+static OSStatus		GetRouteDestination(DWORD * ifIndex, DWORD * address);
+static OSStatus		SetLLRoute( mDNS * const inMDNS );
+static bool			HaveRoute( PMIB_IPFORWARDROW rowExtant, unsigned long addr, unsigned long metric );
+static bool			IsValidAddress( const char * addr );
+static bool			IsNortelVPN( IP_ADAPTER_INFO * pAdapter );
+static bool			IsJuniperVPN( IP_ADAPTER_INFO * pAdapter );
+static bool			IsCiscoVPN( IP_ADAPTER_INFO * pAdapter );
+static const char * strnistr( const char * string, const char * subString, size_t max );
 
 #if defined(UNICODE)
 #	define StrLen(X)	wcslen(X)
@@ -169,11 +188,8 @@ DEBUG_LOCAL SERVICE_TABLE_ENTRY			gServiceDispatchTable[] =
 	{ kServiceName,	ServiceMain }, 
 	{ NULL, 		NULL }
 };
-DEBUG_LOCAL HANDLE						gStopEvent					= NULL;
-DEBUG_LOCAL HANDLE						gPowerSuspendEvent			= NULL;
-DEBUG_LOCAL HANDLE						gPowerSuspendAckEvent		= NULL;
-DEBUG_LOCAL HANDLE						gPowerResumeEvent			= NULL;
 DEBUG_LOCAL SOCKET						gInterfaceListChangedSocket	= INVALID_SOCKET;
+DEBUG_LOCAL HANDLE						gInterfaceListChangedEvent	= NULL;
 DEBUG_LOCAL HKEY						gDescKey					= NULL;
 DEBUG_LOCAL HANDLE						gDescChangedEvent			= NULL;	// Computer description changed event
 DEBUG_LOCAL HKEY						gTcpipKey					= NULL;
@@ -192,11 +208,17 @@ DEBUG_LOCAL HANDLE						gServiceEventSource		= NULL;
 DEBUG_LOCAL bool						gServiceAllowRemote		= false;
 DEBUG_LOCAL int							gServiceCacheEntryCount	= 0;	// 0 means to use the DNS-SD default.
 DEBUG_LOCAL bool						gServiceManageLLRouting = true;
+DEBUG_LOCAL int							gWaitCount				= 0;
+DEBUG_LOCAL HANDLE					*	gWaitList				= NULL;
+DEBUG_LOCAL HANDLE						gStopEvent				= NULL;
 DEBUG_LOCAL HANDLE						gSPSWakeupEvent			= NULL;
 DEBUG_LOCAL HANDLE						gSPSSleepEvent			= NULL;
+DEBUG_LOCAL HANDLE						gUDSEvent				= NULL;
 DEBUG_LOCAL SocketRef					gUDSSocket				= 0;
 DEBUG_LOCAL udsEventCallback			gUDSCallback			= NULL;
 DEBUG_LOCAL BOOL						gRetryFirewall			= FALSE;
+DEBUG_LOCAL DWORD						gOSMajorVersion;
+DEBUG_LOCAL DWORD						gOSMinorVersion;
 
 typedef DWORD ( WINAPI * GetIpInterfaceEntryFunctionPtr )( PMIB_IPINTERFACE_ROW );
 mDNSlocal HMODULE								gIPHelperLibraryInstance		= NULL;
@@ -786,7 +808,7 @@ static void	ReportStatus( int inType, const char *inFormat, ... )
 			BOOL				ok;
 			const char *		array[ 1 ];
 			
-			vsnprintf( s, sizeof( s ), inFormat, args );
+			vsprintf( s, inFormat, args );
 			array[ 0 ] = s;
 			ok = ReportEventA( gServiceEventSource, (WORD) inType, 0, MDNSRESPONDER_LOG, NULL, 1, 0, array, NULL );
 			check_translated_errno( ok, GetLastError(), kUnknownErr );
@@ -814,9 +836,6 @@ int	RunDirect( int argc, LPTSTR argv[] )
 	
 	initialized = FALSE;
 
-	err = SetupServiceEvents();
-	require_noerr( err, exit );
-
 	// Install a Console Control Handler to handle things like control-c signals.
 	
 	ok = SetConsoleCtrlHandler( ConsoleControlHandler, TRUE );
@@ -841,9 +860,6 @@ exit:
 	{
 		ServiceSpecificFinalize( argc, argv );
 	}
-
-	TearDownServiceEvents();
-
 	return( err );
 }
 
@@ -859,9 +875,6 @@ static void WINAPI ServiceMain( DWORD argc, LPTSTR argv[] )
 {
 	OSStatus		err;
 	BOOL			ok;
-
-	err = SetupServiceEvents();
-	require_noerr( err, exit );
 	
 	err = ServiceSetupEventLogging();
 	check_noerr( err );
@@ -909,15 +922,12 @@ static void WINAPI ServiceMain( DWORD argc, LPTSTR argv[] )
 	// Note: The service status handle should not be closed according to Microsoft documentation.
 	
 exit:
-
 	if( gServiceEventSource )
 	{
 		ok = DeregisterEventSource( gServiceEventSource );
 		check_translated_errno( ok, GetLastError(), kUnknownErr );
 		gServiceEventSource = NULL;
 	}
-
-	TearDownServiceEvents();
 }
 
 //===========================================================================================================================
@@ -975,6 +985,54 @@ exit:
 	return( err );
 }
 
+//===========================================================================================================================
+//	HandlePowerSuspend
+//===========================================================================================================================
+
+static void HandlePowerSuspend( void * v )
+{
+	LARGE_INTEGER	timeout;
+	BOOL			ok;
+
+	( void ) v;
+
+	dlog( kDebugLevelInfo, DEBUG_NAME "HandlePowerSuspend\n" );
+
+	gMDNSRecord.SystemWakeOnLANEnabled = SystemWakeForNetworkAccess( &timeout );
+				
+	if ( gMDNSRecord.SystemWakeOnLANEnabled )
+	{
+		ok = SetWaitableTimer( gSPSWakeupEvent, &timeout, 0, NULL, NULL, TRUE );
+		check( ok );
+	}
+
+	mDNSCoreMachineSleep(&gMDNSRecord, TRUE);
+}
+
+
+//===========================================================================================================================
+//	HandlePowerResumeSuspend
+//===========================================================================================================================
+
+static void HandlePowerResumeSuspend( void * v )
+{
+	( void ) v;
+
+	dlog( kDebugLevelInfo, DEBUG_NAME "HandlePowerResumeSuspend\n" );
+
+	if ( gSPSWakeupEvent )
+	{
+		CancelWaitableTimer( gSPSWakeupEvent );
+	}
+
+	if ( gSPSSleepEvent )
+	{
+		CancelWaitableTimer( gSPSSleepEvent );
+	}
+
+	mDNSCoreMachineSleep(&gMDNSRecord, FALSE);
+}
+
 
 //===========================================================================================================================
 //	ServiceControlHandler
@@ -983,7 +1041,6 @@ exit:
 static DWORD WINAPI	ServiceControlHandler( DWORD inControl, DWORD inEventType, LPVOID inEventData, LPVOID inContext )
 {
 	BOOL		setStatus;
-	OSStatus	err;
 	BOOL		ok;
 
 	DEBUG_UNUSED( inEventData );
@@ -994,7 +1051,6 @@ static DWORD WINAPI	ServiceControlHandler( DWORD inControl, DWORD inEventType, L
 	{
 		case SERVICE_CONTROL_STOP:
 		case SERVICE_CONTROL_SHUTDOWN:
-			
 			dlog( kDebugLevelInfo, DEBUG_NAME "ServiceControlHandler: SERVICE_CONTROL_STOP|SERVICE_CONTROL_SHUTDOWN\n" );
 			
 			ServiceStop();
@@ -1007,46 +1063,13 @@ static DWORD WINAPI	ServiceControlHandler( DWORD inControl, DWORD inEventType, L
 			{
 				dlog( kDebugLevelInfo, DEBUG_NAME "ServiceControlHandler: PBT_APMSUSPEND\n" );
 
-				if ( gPowerSuspendEvent )
-				{
-					ok = SetEvent( gPowerSuspendEvent );
-					err = translate_errno( ok, (OSStatus) GetLastError(), kUnknownErr );
-					check_noerr( err );
-
-					switch ( WaitForSingleObject( gPowerSuspendAckEvent, 5 * 1000 ) )
-					{
-						case WAIT_OBJECT_0:
-						{
-							// No error
-						}
-						break;
-
-						case WAIT_TIMEOUT:
-						{
-							dlog( kDebugLevelError, DEBUG_NAME "Timed out waiting for acknowledgement of machine sleep\n" );
-							ReportStatus( EVENTLOG_ERROR_TYPE, "Timed out waiting for acknowledgement of machine sleep" );
-						}
-						break;
-
-						default:
-						{
-							dlog( kDebugLevelError, DEBUG_NAME "Error waiting for acknowledgement of machine sleep: %d", GetLastError() );
-							ReportStatus( EVENTLOG_ERROR_TYPE, "Error waiting for acknowledgement of machine sleep: %d", GetLastError() );
-						}
-						break;
-					}
-				}
+				QueueUserAPC( ( PAPCFUNC ) HandlePowerSuspend, gMDNSRecord.p->mainThread, ( ULONG_PTR ) NULL );
 			}
 			else if (inEventType == PBT_APMRESUMESUSPEND)
 			{
 				dlog( kDebugLevelInfo, DEBUG_NAME "ServiceControlHandler: PBT_APMRESUMESUSPEND\n" );
 
-				if ( gPowerResumeEvent )
-				{
-					ok = SetEvent( gPowerResumeEvent );
-					err = translate_errno( ok, (OSStatus) GetLastError(), kUnknownErr );
-					check_noerr( err );
-				}
+				QueueUserAPC( ( PAPCFUNC ) HandlePowerResumeSuspend, gMDNSRecord.p->mainThread, ( ULONG_PTR ) NULL );
 			}
 		
 			break;
@@ -1092,44 +1115,8 @@ static OSStatus	ServiceRun( int argc, LPTSTR argv[] )
 
 	// Initialize the service-specific stuff
 	
-	while ( 1 )
-	{
-		DWORD ret;
-
-		ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service initializing" );
-
-		err = ServiceSpecificInitialize( argc, argv );
-
-		if ( !err )
-		{
-			ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service initialized" );
-			break;
-		}
-
-		ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service initialization failed with err %d. Waiting %d seconds to retry...", err, kWaitToRetry );
-
-		ret = WaitForSingleObject( gStopEvent, 1000 * kWaitToRetry );
-
-		if ( ret == WAIT_OBJECT_0 )
-		{
-			ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service received a stop event" );
-			goto exit;
-		}
-		else if ( ret == WAIT_OBJECT_0 + 1 )
-		{
-			ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service received a power suspend event" );
-		}
-		else if ( ret == WAIT_OBJECT_0 + 2 )
-		{
-			ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service received a power resume event" );
-		}
-		else if ( ret != WAIT_TIMEOUT )
-		{
-			ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service received an error in WaitForSingleObject() : %d, %d", ret, GetLastError() );
-			goto exit;
-		}
-	}
-
+	err = ServiceSpecificInitialize( argc, argv );
+	require_noerr( err, exit );
 	initialized = TRUE;
 	
 	err = CheckFirewall();
@@ -1141,23 +1128,19 @@ static OSStatus	ServiceRun( int argc, LPTSTR argv[] )
 	}
 	
 	// Run the service-specific stuff. This does not return until the service quits or is stopped.
-
+	
 	ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service started\n" );
-
 	err = ServiceSpecificRun( argc, argv );
+	ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service stopped (%d)\n", err );
 	require_noerr( err, exit );
-
-exit:
-
+	
 	// Service stopped. Clean up and we're done.
 	
-	ReportStatus( EVENTLOG_INFORMATION_TYPE, "Service stopped (%d)\n", err );
-	
+exit:
 	if( initialized )
 	{
 		ServiceSpecificFinalize( argc, argv );
 	}
-	
 	return( err );
 }
 
@@ -1183,7 +1166,6 @@ static void	ServiceStop( void )
 	check_noerr( err );
 }
 
-
 #if 0
 #pragma mark -
 #pragma mark == Service Specific ==
@@ -1195,7 +1177,9 @@ static void	ServiceStop( void )
 
 static OSStatus	ServiceSpecificInitialize( int argc, LPTSTR argv[] )
 {
+	OSVERSIONINFO osInfo;
 	OSStatus err;
+	BOOL ok;
 	
 	DEBUG_UNUSED( argc );
 	DEBUG_UNUSED( argv );
@@ -1203,6 +1187,8 @@ static OSStatus	ServiceSpecificInitialize( int argc, LPTSTR argv[] )
 	mDNSPlatformMemZero( &gMDNSRecord, sizeof gMDNSRecord);
 	mDNSPlatformMemZero( &gPlatformStorage, sizeof gPlatformStorage);
 
+	gPlatformStorage.registerWaitableEventFunc = RegisterWaitableEvent;
+	gPlatformStorage.unregisterWaitableEventFunc = UnregisterWaitableEvent;
 	gPlatformStorage.reportStatusFunc = ReportStatus;
 
 	err = mDNS_Init( &gMDNSRecord, &gPlatformStorage, gRRCache, RR_CACHE_SIZE, mDNS_Init_AdvertiseLocalAddresses, CoreCallback, mDNS_Init_NoInitCallbackContext); 
@@ -1213,6 +1199,16 @@ static OSStatus	ServiceSpecificInitialize( int argc, LPTSTR argv[] )
 
 	err = udsserver_init(mDNSNULL, 0);
 	require_noerr( err, exit);
+
+	//
+	// Get the version of Windows that we're running on
+	//
+	osInfo.dwOSVersionInfoSize = sizeof( OSVERSIONINFO );
+	ok = GetVersionEx( &osInfo );
+	err = translate_errno( ok, (OSStatus) GetLastError(), kUnknownErr );
+	require_noerr( err, exit );
+	gOSMajorVersion = osInfo.dwMajorVersion;
+	gOSMinorVersion = osInfo.dwMinorVersion;
 
 	SetLLRoute( &gMDNSRecord );
 
@@ -1230,11 +1226,17 @@ exit:
 
 static OSStatus	ServiceSpecificRun( int argc, LPTSTR argv[] )
 {
-	mDNSBool done = mDNSfalse;
-	mStatus err = mStatus_NoError;
+	HANDLE	*	waitList;
+	int			waitListCount;
+	DWORD		timeout;
+	DWORD		result;
+	BOOL		done;
+	mStatus		err;
 	
 	DEBUG_UNUSED( argc );
 	DEBUG_UNUSED( argv );
+
+	timeout = ( gRetryFirewall ) ? kRetryFirewallPeriod : INFINITE;
 
 	err = SetupInterfaceList( &gMDNSRecord );
 	check( !err );
@@ -1242,73 +1244,329 @@ static OSStatus	ServiceSpecificRun( int argc, LPTSTR argv[] )
 	err = uDNS_SetupDNSConfig( &gMDNSRecord );
 	check( !err );
 
+	done = FALSE;
+
+	// Main event loop.
+
 	while( !done )
 	{
-		static mDNSs32 RepeatedBusy = 0;	
-		mDNSs32 nextTimerEvent;
-		mStatus err;
+		waitList		= NULL;
+		waitListCount	= 0;
 
-		// Give the mDNS core a chance to do its work and determine next event time.
+		err = SetupWaitList( &gMDNSRecord, &waitList, &waitListCount );
+		require_noerr( err, exit );
 
-		nextTimerEvent = udsserver_idle( mDNS_Execute( &gMDNSRecord ) - mDNS_TimeNow( &gMDNSRecord ) );
+		gEventSourceListChanged = FALSE;
 
-		if      ( nextTimerEvent < 0)					nextTimerEvent = 0;
-		else if ( nextTimerEvent > (0x7FFFFFFF / 1000))	nextTimerEvent = 0x7FFFFFFF / mDNSPlatformOneSecond;
-		else											nextTimerEvent = ( nextTimerEvent * 1000) / mDNSPlatformOneSecond;
+		while ( !gEventSourceListChanged )
+		{
+			static mDNSs32 RepeatedBusy = 0;	
+			mDNSs32 nextTimerEvent;
 
-		// Debugging sanity check, to guard against CPU spins
+			// Give the mDNS core a chance to do its work and determine next event time.
+
+			nextTimerEvent = udsserver_idle( mDNS_Execute( &gMDNSRecord ) - mDNS_TimeNow( &gMDNSRecord ) );
+
+			if      ( nextTimerEvent < 0)					nextTimerEvent = 0;
+			else if ( nextTimerEvent > (0x7FFFFFFF / 1000))	nextTimerEvent = 0x7FFFFFFF / mDNSPlatformOneSecond;
+			else											nextTimerEvent = ( nextTimerEvent * 1000) / mDNSPlatformOneSecond;
+
+			// Debugging sanity check, to guard against CPU spins
 			
-		if ( nextTimerEvent > 0 )
-		{
-			RepeatedBusy = 0;
-		}
-		else
-		{
-			nextTimerEvent = 1;
-
-			if ( ++RepeatedBusy >= mDNSPlatformOneSecond )
+			if ( nextTimerEvent > 0 )
 			{
-				ShowTaskSchedulingError( &gMDNSRecord );
 				RepeatedBusy = 0;
 			}
-		}
-
-		if ( gMDNSRecord.ShutdownTime )
-		{
-			mDNSs32 now = mDNS_TimeNow( &gMDNSRecord );
-
-			if ( mDNS_ExitNow( &gMDNSRecord, now ) )
+			else
 			{
-				mDNS_FinalExit( &gMDNSRecord );
-				done = TRUE;
+				nextTimerEvent = 1;
+
+				if ( ++RepeatedBusy >= mDNSPlatformOneSecond )
+				{
+					ShowTaskSchedulingError( &gMDNSRecord );
+					RepeatedBusy = 0;
+				}
+			}
+
+			if ( gMDNSRecord.ShutdownTime )
+			{
+				mDNSs32 now = mDNS_TimeNow( &gMDNSRecord );
+
+				if ( mDNS_ExitNow( &gMDNSRecord, now ) )
+				{
+					mDNS_FinalExit( &gMDNSRecord );
+					done = TRUE;
+					break;
+				}
+
+				if ( nextTimerEvent - gMDNSRecord.ShutdownTime >= 0 )
+				{
+					nextTimerEvent = gMDNSRecord.ShutdownTime;
+				}
+			}
+
+			// Wait until something occurs (e.g. cancel, incoming packet, or timeout).
+			//
+			// Note: There seems to be a bug in WinSock with respect to Alertable I/O. According
+			// to MSDN <http://msdn.microsoft.com/en-us/library/aa363772(VS.85).aspx>, Alertable I/O
+			// callbacks will only be invoked during the following calls (when the caller sets
+			// the appropriate flag):
+			//
+			// - SleepEx
+			// - WaitForSingleObjectEx
+			// - WaitForMultipleObjectsEx
+			// - SignalObjectAndWait
+			// - MsgWaitForMultipleObjectsEx
+			//
+			// However, we have seen callbacks be invoked during calls to bind() (and maybe others). If there
+			// weren't a bug, then socket events would only be queued during the call to WaitForMultipleObjects() and
+			// we'd only have to check them once afterwards. However since that doesn't seem to be the case, we'll
+			// check the queue both before we call WaitForMultipleObjects() and after.
+
+			DispatchSocketEvents( &gMDNSRecord );
+			result = WaitForMultipleObjectsEx( ( DWORD ) waitListCount, waitList, FALSE, (DWORD) nextTimerEvent, TRUE );
+			check( result != WAIT_FAILED );
+			DispatchSocketEvents( &gMDNSRecord );
+
+			if ( result != WAIT_FAILED )
+			{
+				if ( result == WAIT_TIMEOUT )
+				{
+					// Next task timeout occurred. Loop back up to give mDNS core a chance to work.
+					
+					dlog( kDebugLevelChatty - 1, DEBUG_NAME "timeout\n" );
+					continue;
+				}
+				else if ( result == WAIT_IO_COMPLETION )
+				{
+					dlog( kDebugLevelChatty - 1, DEBUG_NAME "i/o completion\n" );
+					continue;
+				}
+				else if ( result == kWaitListStopEvent )
+				{
+					// Stop event. Set the done flag and break to exit.
+					
+					dlog( kDebugLevelVerbose, DEBUG_NAME "stopping...\n" );
+					udsserver_exit();
+					mDNS_StartExit( &gMDNSRecord );
+					break;
+				}
+				else if( result == kWaitListInterfaceListChangedEvent )
+				{
+					int		inBuffer;
+					int		outBuffer;
+					DWORD	outSize;
+
+					// It would be nice to come up with a more elegant solution to this, but it seems that
+					// GetAdaptersAddresses doesn't always stay in sync after network changed events.  So as
+					// as a simple workaround, we'll pause for a couple of seconds before processing the change.
+
+					// We arrived at 2 secs by trial and error. We could reproduce the problem after sleeping
+					// for 500 msec and 750 msec, but couldn't after sleeping for 1 sec.  We added another
+					// second on top of that to account for machine load or some other exigency.
+
+					Sleep( 2000 );
+
+					// Interface list changed event. Break out of the inner loop to re-setup the wait list.
+					
+					InterfaceListDidChange( &gMDNSRecord );
+
+					// reset the event handler
+					inBuffer	= 0;
+					outBuffer	= 0;
+					err = WSAIoctl( gInterfaceListChangedSocket, SIO_ADDRESS_LIST_CHANGE, &inBuffer, 0, &outBuffer, 0, &outSize, NULL, NULL );
+					if( err < 0 )
+					{
+						check( errno_compat() == WSAEWOULDBLOCK );
+					}
+				}
+				else if ( result == kWaitListComputerDescriptionEvent )
+				{
+					// The computer description might have changed
+					
+					ComputerDescriptionDidChange( &gMDNSRecord );
+					udsserver_handle_configchange( &gMDNSRecord );
+
+					// and reset the event handler
+					if ( ( gDescKey != NULL ) && ( gDescChangedEvent != NULL ) )
+					{
+						err = RegNotifyChangeKeyValue( gDescKey, TRUE, REG_NOTIFY_CHANGE_LAST_SET, gDescChangedEvent, TRUE);
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListTCPIPEvent )
+				{	
+					// The TCP/IP might have changed
+
+					TCPIPConfigDidChange( &gMDNSRecord );
+					udsserver_handle_configchange( &gMDNSRecord );
+
+					// and reset the event handler
+
+					if ( ( gTcpipKey != NULL ) && ( gTcpipChangedEvent ) )
+					{
+						err = RegNotifyChangeKeyValue( gTcpipKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gTcpipChangedEvent, TRUE );
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListDynDNSEvent )
+				{
+					// The DynDNS config might have changed
+
+					DynDNSConfigDidChange( &gMDNSRecord );
+					udsserver_handle_configchange( &gMDNSRecord );
+
+					// and reset the event handler
+
+					if ((gDdnsKey != NULL) && (gDdnsChangedEvent))
+					{
+						err = RegNotifyChangeKeyValue(gDdnsKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gDdnsChangedEvent, TRUE);
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListFileShareEvent )
+				{
+					// File sharing changed
+
+					FileSharingDidChange( &gMDNSRecord );
+
+					// and reset the event handler
+
+					if ((gFileSharingKey != NULL) && (gFileSharingChangedEvent))
+					{
+						err = RegNotifyChangeKeyValue(gFileSharingKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFileSharingChangedEvent, TRUE);
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListFirewallEvent )
+				{
+					// Firewall configuration changed
+
+					FirewallDidChange( &gMDNSRecord );
+
+					// and reset the event handler
+
+					if ((gFirewallKey != NULL) && (gFirewallChangedEvent))
+					{
+						err = RegNotifyChangeKeyValue(gFirewallKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFirewallChangedEvent, TRUE);
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListAdvertisedServicesEvent )
+				{
+					// Ultimately we'll want to manage multiple services, but right now the only service
+					// we'll be managing is SMB.
+
+					FileSharingDidChange( &gMDNSRecord );
+
+					// and reset the event handler
+
+					if ( ( gAdvertisedServicesKey != NULL ) && ( gAdvertisedServicesChangedEvent ) )
+					{
+						err = RegNotifyChangeKeyValue(gAdvertisedServicesKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gAdvertisedServicesChangedEvent, TRUE);
+						check_noerr( err );
+					}
+				}
+				else if ( result == kWaitListSPSWakeupEvent )
+				{
+					LARGE_INTEGER timeout;
+
+					ReportStatus( EVENTLOG_INFORMATION_TYPE, "Maintenance wake" );
+
+					timeout.QuadPart  = kSPSMaintenanceWakePeriod;
+					timeout.QuadPart *= kSecondsTo100NSUnits;
+
+					SetWaitableTimer( gSPSSleepEvent, &timeout, 0, NULL, NULL, TRUE );
+				}
+				else if ( result == kWaitListSPSSleepEvent )
+				{
+					ReportStatus( EVENTLOG_INFORMATION_TYPE, "Returning to sleep after maintenance wake" );
+
+					// Calling SetSuspendState() doesn't invoke our sleep handlers, so we'll
+					// call HandlePowerSuspend() explicity.  This will reset the 
+					// maintenance wake timers.
+
+					HandlePowerSuspend( NULL );
+					SetSuspendState( FALSE, FALSE, FALSE );
+				}
+				else
+				{
+					int waitItemIndex;
+
+					waitItemIndex = (int)( ( (int) result ) - WAIT_OBJECT_0 );
+					dlog( kDebugLevelChatty, DEBUG_NAME "waitable event on %d\n", waitItemIndex );
+					check( ( waitItemIndex >= 0 ) && ( waitItemIndex < waitListCount ) );
+
+					if ( ( waitItemIndex >= 0 ) && ( waitItemIndex < waitListCount ) )
+					{
+						HANDLE	signaledEvent;
+						int		n = 0;
+						
+						signaledEvent = waitList[ waitItemIndex ];
+
+						// If gCurrentSource is not NULL, then this routine has been called
+						// re-entrantly which should never happen.
+
+						check( !gCurrentSource );
+
+						for ( gCurrentSource = gEventSourceList; gCurrentSource; )
+						{
+							EventSource * current = gCurrentSource;
+
+							if ( gCurrentSource->event == signaledEvent )
+							{
+								gCurrentSource->handler( &gMDNSRecord, gCurrentSource->event, gCurrentSource->context );
+								++n;
+								break;
+							}
+
+							// If the current node was removed as a result of calling
+							// the handler, then gCurrentSource was already incremented to
+							// the next node.  If it wasn't removed, then increment it
+							// ourselves
+
+							if ( gCurrentSource == current )
+							{
+								gCurrentSource = gCurrentSource->next;
+							}
+						}
+
+						gCurrentSource = NULL;
+
+						check( n > 0 );
+					}
+					else
+					{
+						dlog( kDebugLevelWarning, DEBUG_NAME "%s: unexpected wait result (result=0x%08X)\n", __ROUTINE__, result );
+					}
+				}
+			}
+			else
+			{
+				Sleep( 3 * 1000 );
+				
+				err = SetupInterfaceList( &gMDNSRecord );
+				check( !err );
+
+				err = uDNS_SetupDNSConfig( &gMDNSRecord );
+				check( !err );
+				
 				break;
 			}
-
-			if ( nextTimerEvent - gMDNSRecord.ShutdownTime >= 0 )
-			{
-				nextTimerEvent = gMDNSRecord.ShutdownTime;
-			}
 		}
 
-		err = mDNSPoll( nextTimerEvent );
-
-		if ( err )
+		if ( waitList )
 		{
-			Sleep( 3 * 1000 );
-				
-			err = SetupInterfaceList( &gMDNSRecord );
-			check( !err );
-
-			err = uDNS_SetupDNSConfig( &gMDNSRecord );
-			check( !err );
-				
-			break;
+			free( waitList );
+			waitList = NULL;
+			waitListCount = 0;
 		}
 	}
 
-	return ( err );
-}
+exit:
 
+	return( 0 );
+}
 
 //===========================================================================================================================
 //	ServiceSpecificStop
@@ -1316,15 +1574,13 @@ static OSStatus	ServiceSpecificRun( int argc, LPTSTR argv[] )
 
 static OSStatus	ServiceSpecificStop( void )
 {
-	OSStatus    err;
-	BOOL        ok;
+	OSStatus	err;
+	BOOL	 	ok;
 
 	ok = SetEvent(gStopEvent);
 	err = translate_errno( ok, (OSStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
-
 exit:
-
 	return( err );
 }
 
@@ -1337,6 +1593,14 @@ static void	ServiceSpecificFinalize( int argc, LPTSTR argv[] )
 	DEBUG_UNUSED( argc );
 	DEBUG_UNUSED( argv );
 	
+	//
+	// clean up any open sessions
+	//
+	while ( gEventSourceList )
+	{
+		UnregisterWaitableEvent( &gMDNSRecord, gEventSourceList->event );
+	}
+
 	//
 	// clean up the notifications
 	//
@@ -1357,47 +1621,6 @@ static void	ServiceSpecificFinalize( int argc, LPTSTR argv[] )
 
 
 //===========================================================================================================================
-//	SetupServiceEvents
-//===========================================================================================================================
-
-mDNSlocal mStatus	SetupServiceEvents()
-{
-	mStatus err;
-	
-	// Stop Event
-
-	gStopEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	err = translate_errno( gStopEvent, (mStatus) GetLastError(), kUnknownErr );
-	require_noerr( err, exit );
-
-exit:
-
-	if ( err )
-	{
-		TearDownServiceEvents();
-	}
-
-	return err;
-}
-
-
-//===========================================================================================================================
-//	TearDownServiceNotifications
-//===========================================================================================================================
-
-mDNSlocal mStatus	TearDownServiceEvents()
-{
-	if ( gStopEvent )
-	{
-		CloseHandle( gStopEvent );
-		gStopEvent = NULL;
-	}
-
-	return mStatus_NoError;
-}
-
-
-//===========================================================================================================================
 //	SetupNotifications
 //===========================================================================================================================
 
@@ -1409,35 +1632,17 @@ mDNSlocal mStatus	SetupNotifications()
 	int					inBuffer;
 	int					outBuffer;
 	DWORD				outSize;
-
-	require_action( gStopEvent, exit, err = kUnknownErr );
-	err = mDNSPollRegisterEvent( gStopEvent, StopNotification, NULL );
-	require_noerr( err, exit );
-
-	// Power Suspend
-
-	gPowerSuspendEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	err = translate_errno( gPowerSuspendEvent, (mStatus) GetLastError(), kUnknownErr );
-	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gPowerSuspendEvent, PowerSuspendNotification, NULL );
-	require_noerr( err, exit );
-
-	// Power Suspend Ack
-
-	gPowerSuspendAckEvent = CreateEvent( NULL, FALSE, FALSE, NULL );
-	err = translate_errno( gPowerSuspendAckEvent, ( mStatus ) GetLastError(), kUnknownErr );
-	require_noerr( err, exit );
-
-	// Power Resume
-
-	gPowerResumeEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-	err = translate_errno( gPowerResumeEvent, (mStatus) GetLastError(), kUnknownErr );
-	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gPowerResumeEvent, PowerResumeNotification, NULL );
+	
+	gStopEvent	=	CreateEvent(NULL, FALSE, FALSE, NULL);
+	err = translate_errno( gStopEvent, errno_compat(), kNoResourcesErr );
 	require_noerr( err, exit );
 
 	// Register to listen for address list changes.
 	
+	gInterfaceListChangedEvent = CreateEvent( NULL, FALSE, FALSE, NULL );
+	err = translate_errno( gInterfaceListChangedEvent, (mStatus) GetLastError(), kUnknownErr );
+	require_noerr( err, exit );
+
 	sock = socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
 	err = translate_errno( IsValidSocket( sock ), errno_compat(), kUnknownErr );
 	require_noerr( err, exit );
@@ -1458,10 +1663,11 @@ mDNSlocal mStatus	SetupNotifications()
 	{
 		check( errno_compat() == WSAEWOULDBLOCK );
 	}
-
-	err = mDNSPollRegisterSocket( sock, FD_ADDRESS_LIST_CHANGE, InterfaceListNotification, NULL );
-	require_noerr( err, exit );
 	
+	err = WSAEventSelect( sock, gInterfaceListChangedEvent, FD_ADDRESS_LIST_CHANGE );
+	err = translate_errno( err == 0, errno_compat(), kUnknownErr );
+	require_noerr( err, exit );
+
 	gDescChangedEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 	err = translate_errno( gDescChangedEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
@@ -1475,19 +1681,16 @@ mDNSlocal mStatus	SetupNotifications()
 		require_noerr( err, exit );
 	}
 
-	err = mDNSPollRegisterEvent( gDescChangedEvent, ComputerDescriptionNotification, NULL );
-	require_noerr( err, exit );
-
 	// This will catch all changes to tcp/ip networking, including changes to the domain search list
 
 	gTcpipChangedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	err = translate_errno( gTcpipChangedEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
+
 	err = RegCreateKey( HKEY_LOCAL_MACHINE, TEXT("SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters"), &gTcpipKey );
 	require_noerr( err, exit );
+
 	err = RegNotifyChangeKeyValue( gTcpipKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gTcpipChangedEvent, TRUE);
-	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gTcpipChangedEvent, TCPChangedNotification, NULL );
 	require_noerr( err, exit );
 
 	// This will catch all changes to ddns configuration
@@ -1495,11 +1698,11 @@ mDNSlocal mStatus	SetupNotifications()
 	gDdnsChangedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	err = translate_errno( gDdnsChangedEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
+
 	err = RegCreateKey( HKEY_LOCAL_MACHINE, kServiceParametersNode TEXT("\\DynDNS\\Setup"), &gDdnsKey );
 	require_noerr( err, exit );
+
 	err = RegNotifyChangeKeyValue( gDdnsKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gDdnsChangedEvent, TRUE);
-	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gDdnsChangedEvent, DDNSChangedNotification, NULL );
 	require_noerr( err, exit );
 
 	// This will catch all changes to file sharing
@@ -1517,8 +1720,6 @@ mDNSlocal mStatus	SetupNotifications()
 	if ( !err )
 	{
 		err = RegNotifyChangeKeyValue( gFileSharingKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFileSharingChangedEvent, TRUE);
-		require_noerr( err, exit );
-		err = mDNSPollRegisterEvent( gFileSharingChangedEvent, FileSharingChangedNotification, NULL );
 		require_noerr( err, exit );
 	}
 	else
@@ -1542,8 +1743,6 @@ mDNSlocal mStatus	SetupNotifications()
 	{
 		err = RegNotifyChangeKeyValue( gFirewallKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFirewallChangedEvent, TRUE);
 		require_noerr( err, exit );
-		err = mDNSPollRegisterEvent( gFirewallChangedEvent, FirewallChangedNotification, NULL );
-		require_noerr( err, exit );
 	}
 	else
 	{
@@ -1555,27 +1754,23 @@ mDNSlocal mStatus	SetupNotifications()
 	gAdvertisedServicesChangedEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 	err = translate_errno( gAdvertisedServicesChangedEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
+
 	err = RegCreateKey( HKEY_LOCAL_MACHINE, kServiceParametersNode TEXT("\\Services"), &gAdvertisedServicesKey );
 	require_noerr( err, exit );
+
 	err = RegNotifyChangeKeyValue( gAdvertisedServicesKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gAdvertisedServicesChangedEvent, TRUE);
 	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gAdvertisedServicesChangedEvent, AdvertisedServicesChangedNotification, NULL );
-	require_noerr( err, exit );
-
-	// SPSWakeup timer
 
 	gSPSWakeupEvent = CreateWaitableTimer( NULL, FALSE, NULL );
 	err = translate_errno( gSPSWakeupEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gSPSWakeupEvent, SPSWakeupNotification, NULL );
-	require_noerr( err, exit );
-
-	// SPSSleep timer
 
 	gSPSSleepEvent = CreateWaitableTimer( NULL, FALSE, NULL );
 	err = translate_errno( gSPSSleepEvent, (mStatus) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
-	err = mDNSPollRegisterEvent( gSPSSleepEvent, SPSSleepNotification, NULL );
+
+	gUDSEvent = CreateEvent( NULL, FALSE, FALSE, NULL );
+	err = translate_errno( gUDSEvent, ( mStatus ) GetLastError(), kUnknownErr );
 	require_noerr( err, exit );
 
 exit:
@@ -1592,17 +1787,26 @@ exit:
 
 mDNSlocal mStatus	TearDownNotifications()
 {
+	if ( gStopEvent )
+	{
+		CloseHandle( gStopEvent );
+		gStopEvent = NULL;
+	}
+
 	if( IsValidSocket( gInterfaceListChangedSocket ) )
 	{
-		mDNSPollUnregisterSocket( gInterfaceListChangedSocket );
-
 		close_compat( gInterfaceListChangedSocket );
 		gInterfaceListChangedSocket = kInvalidSocketRef;
 	}
 
+	if( gInterfaceListChangedEvent )
+	{
+		CloseHandle( gInterfaceListChangedEvent );
+		gInterfaceListChangedEvent = 0;
+	}
+
 	if ( gDescChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gDescChangedEvent );
 		CloseHandle( gDescChangedEvent );
 		gDescChangedEvent = NULL;
 	}
@@ -1615,14 +1819,12 @@ mDNSlocal mStatus	TearDownNotifications()
 
 	if ( gTcpipChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gTcpipChangedEvent );
 		CloseHandle( gTcpipChangedEvent );
 		gTcpipChangedEvent = NULL;
 	}
 
 	if ( gDdnsChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gDdnsChangedEvent );
 		CloseHandle( gDdnsChangedEvent );
 		gDdnsChangedEvent = NULL;
 	}
@@ -1635,7 +1837,6 @@ mDNSlocal mStatus	TearDownNotifications()
 
 	if ( gFileSharingChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gFileSharingChangedEvent );
 		CloseHandle( gFileSharingChangedEvent );
 		gFileSharingChangedEvent = NULL;
 	}
@@ -1648,7 +1849,6 @@ mDNSlocal mStatus	TearDownNotifications()
 
 	if ( gFirewallChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gFirewallChangedEvent );
 		CloseHandle( gFirewallChangedEvent );
 		gFirewallChangedEvent = NULL;
 	}
@@ -1661,7 +1861,6 @@ mDNSlocal mStatus	TearDownNotifications()
 
 	if ( gAdvertisedServicesChangedEvent != NULL )
 	{
-		mDNSPollUnregisterEvent( gAdvertisedServicesChangedEvent );
 		CloseHandle( gAdvertisedServicesChangedEvent );
 		gAdvertisedServicesChangedEvent = NULL;
 	}
@@ -1674,304 +1873,159 @@ mDNSlocal mStatus	TearDownNotifications()
 
 	if ( gSPSWakeupEvent )
 	{
-		mDNSPollUnregisterEvent( gSPSWakeupEvent );
 		CloseHandle( gSPSWakeupEvent );
 		gSPSWakeupEvent = NULL;
 	}
 
 	if ( gSPSSleepEvent )
 	{
-		mDNSPollUnregisterEvent( gSPSSleepEvent );
 		CloseHandle( gSPSSleepEvent );
 		gSPSSleepEvent = NULL;
-	}
-
-	if ( gPowerResumeEvent )
-	{
-		mDNSPollUnregisterEvent( gPowerResumeEvent );
-		CloseHandle( gPowerResumeEvent );
-		gPowerResumeEvent = NULL;
-	}
-
-	if ( gPowerSuspendAckEvent )
-	{
-		CloseHandle( gPowerSuspendAckEvent );
-		gPowerSuspendAckEvent = NULL;
-	}
-
-	if ( gPowerSuspendEvent )
-	{
-		mDNSPollUnregisterEvent( gPowerSuspendEvent );
-		CloseHandle( gPowerSuspendEvent );
-		gPowerSuspendEvent = NULL;
-	}
-
-	if ( gStopEvent )
-	{
-		mDNSPollUnregisterEvent( gStopEvent );
 	}
 
 	return( mStatus_NoError );
 }
 
 
-mDNSlocal void CALLBACK
-StopNotification( HANDLE event, void *context )
-{
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
+//===========================================================================================================================
+//	RegisterWaitableEvent
+//===========================================================================================================================
 
-	dlog( kDebugLevelVerbose, DEBUG_NAME "stopping...\n" );
-	udsserver_exit();
-	mDNS_StartExit( &gMDNSRecord );
+static mStatus RegisterWaitableEvent( mDNS * const inMDNS, HANDLE event, void * context, RegisterWaitableEventHandler handler )
+{
+	EventSource * source;
+	mStatus err = mStatus_NoError;
+
+	( void ) inMDNS;
+	check( event );
+	check( handler );
+
+	source = ( EventSource* ) malloc( sizeof( EventSource ) );
+	require_action( source, exit, err = mStatus_NoMemoryErr );
+	mDNSPlatformMemZero( source, sizeof( EventSource ) );
+	source->event = event;
+	source->context = context;
+	source->handler = handler;
+
+	source->next			= gEventSourceList;
+	gEventSourceList		= source;
+	gEventSourceListChanged	= TRUE;
+	gEventSources++;
+
+exit:
+
+	return err;
 }
 
 
-mDNSlocal void CALLBACK
-PowerSuspendNotification( HANDLE event, void * context )
+//===========================================================================================================================
+//	UnregisterWaitableEvent
+//===========================================================================================================================
+
+static void UnregisterWaitableEvent( mDNS * const inMDNS, HANDLE event )
 {
-	LARGE_INTEGER	timeout;
-	BOOL			ok;
+	EventSource	*	current	= gEventSourceList;
+	EventSource	*	last	= NULL;
 
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
+	( void ) inMDNS;
+	check( event );
 
-	dlog( kDebugLevelInfo, DEBUG_NAME "PowerSuspendNotification\n" );
-
-	gMDNSRecord.SystemWakeOnLANEnabled = SystemWakeForNetworkAccess( &timeout );
-				
-	if ( gMDNSRecord.SystemWakeOnLANEnabled )
+	while ( current )
 	{
-		ok = SetWaitableTimer( gSPSWakeupEvent, &timeout, 0, NULL, NULL, TRUE );
-		check( ok );
-	}
+		if ( current->event == event )
+		{
+			if ( last == NULL )
+			{
+				gEventSourceList = current->next;
+			}
+			else
+			{
+				last->next = current->next;
+			}
 
-	mDNSCoreMachineSleep(&gMDNSRecord, TRUE);
+			gEventSourceListChanged = TRUE;
 
-	ok = SetEvent( gPowerSuspendAckEvent );
+			// Protect against removing the node that we happen
+			// to be looking at as we iterate through the event
+			// source list in ServiceSpecificRun()
 
-	if ( !ok )
-	{
-		dlog( kDebugLevelError, DEBUG_NAME "PowerSuspendNotification: error while setting acknowledgement: %d", GetLastError() );
-		ReportStatus( EVENTLOG_ERROR_TYPE, "PowerSuspendNotification: error while setting acknowledgement: %d", GetLastError() );
-	}
-}
+			if ( current == gCurrentSource )
+			{
+				gCurrentSource = current->next;
+			}
 
+			gEventSources--;
+			free( current );
 
-mDNSlocal void CALLBACK
-PowerResumeNotification( HANDLE event, void * context )
-{
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
+			break;
+		}
 
-	dlog( kDebugLevelInfo, DEBUG_NAME "PowerResumeNotification\n" );
-
-	if ( gSPSWakeupEvent )
-	{
-		CancelWaitableTimer( gSPSWakeupEvent );
-	}
-
-	if ( gSPSSleepEvent )
-	{
-		CancelWaitableTimer( gSPSSleepEvent );
-	}
-
-	mDNSCoreMachineSleep(&gMDNSRecord, FALSE);
-}
-
-
-
-mDNSlocal void CALLBACK
-InterfaceListNotification( SOCKET socket, LPWSANETWORKEVENTS event, void *context )
-{
-	int		inBuffer;
-	int		outBuffer;
-	DWORD	outSize;
-	int		err;
-
-	DEBUG_UNUSED( socket );
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	// It would be nice to come up with a more elegant solution to this, but it seems that
-	// GetAdaptersAddresses doesn't always stay in sync after network changed events.  So as
-	// as a simple workaround, we'll pause for a couple of seconds before processing the change.
-
-	// We arrived at 2 secs by trial and error. We could reproduce the problem after sleeping
-	// for 500 msec and 750 msec, but couldn't after sleeping for 1 sec.  We added another
-	// second on top of that to account for machine load or some other exigency.
-
-	Sleep( 2000 );
-
-	// Interface list changed event. Break out of the inner loop to re-setup the wait list.
-					
-	InterfaceListDidChange( &gMDNSRecord );
-
-	// reset the event handler
-	inBuffer	= 0;
-	outBuffer	= 0;
-	err = WSAIoctl( gInterfaceListChangedSocket, SIO_ADDRESS_LIST_CHANGE, &inBuffer, 0, &outBuffer, 0, &outSize, NULL, NULL );
-	if( err < 0 )
-	{
-		check( errno_compat() == WSAEWOULDBLOCK );
+		last	= current;
+		current	= current->next;
 	}
 }
 
 
-mDNSlocal void CALLBACK
-ComputerDescriptionNotification( HANDLE event, void *context )
+//===========================================================================================================================
+//	SetupWaitList
+//===========================================================================================================================
+
+mDNSlocal mStatus SetupWaitList( mDNS * const inMDNS, HANDLE **outWaitList, int *outWaitListCount )
 {
-	// The computer description might have changed
-					
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
+	int				waitListCount;
+	HANDLE		*	waitList;
+	HANDLE		*	waitItemPtr;
+	EventSource	*	source;
+	mStatus			err;
+	
+	dlog( kDebugLevelTrace, DEBUG_NAME "setting up wait list\n" );
+	
+	( void ) inMDNS;
+	check( inMDNS->p );
+	check( outWaitList );
+	check( outWaitListCount );
+	
+	// Allocate an array to hold all the objects to wait on.
+	
+	waitListCount = kWaitListFixedItemCount + gEventSources;
+	waitList = ( HANDLE* ) malloc( waitListCount * sizeof( *waitList ) );
+	require_action( waitList, exit, err = mStatus_NoMemoryErr );
+	waitItemPtr = waitList;
+	
+	// Add the fixed wait items to the beginning of the list.
+	
+	*waitItemPtr++	=	gStopEvent;
+	*waitItemPtr++	=	gInterfaceListChangedEvent;
+	*waitItemPtr++	=	gDescChangedEvent;
+	*waitItemPtr++	=	gTcpipChangedEvent;
+	*waitItemPtr++	=	gDdnsChangedEvent;
+	*waitItemPtr++	=	gFileSharingChangedEvent;
+	*waitItemPtr++	=	gFirewallChangedEvent;
+	*waitItemPtr++	=	gAdvertisedServicesChangedEvent;
+	*waitItemPtr++	=	gSPSWakeupEvent;
+	*waitItemPtr++	=	gSPSSleepEvent;
 
-	ComputerDescriptionDidChange( &gMDNSRecord );
-	udsserver_handle_configchange( &gMDNSRecord );
-
-	// and reset the event handler
-	if ( ( gDescKey != NULL ) && ( gDescChangedEvent != NULL ) )
+	for ( source = gEventSourceList; source; source = source->next )
 	{
-		int err = RegNotifyChangeKeyValue( gDescKey, TRUE, REG_NOTIFY_CHANGE_LAST_SET, gDescChangedEvent, TRUE);
-		check_noerr( err );
+		*waitItemPtr++ = source->event;
 	}
-}
 
+	check( ( int )( waitItemPtr - waitList ) == waitListCount );
+	
+	*outWaitList 		= waitList;
+	*outWaitListCount	= waitListCount;
+	waitList			= NULL;
+	err					= mStatus_NoError;
+	
+exit:
 
-mDNSlocal void CALLBACK
-TCPChangedNotification( HANDLE event, void *context )
-{
-	// The TCP/IP might have changed
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	TCPIPConfigDidChange( &gMDNSRecord );
-	udsserver_handle_configchange( &gMDNSRecord );
-
-	// and reset the event handler
-
-	if ( ( gTcpipKey != NULL ) && ( gTcpipChangedEvent ) )
+	if( waitList )
 	{
-		int err = RegNotifyChangeKeyValue( gTcpipKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gTcpipChangedEvent, TRUE );
-		check_noerr( err );
+		free( waitList );
 	}
-}
 
-
-mDNSlocal void CALLBACK
-DDNSChangedNotification( HANDLE event, void *context )
-{
-	// The DynDNS config might have changed
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	DynDNSConfigDidChange( &gMDNSRecord );
-	udsserver_handle_configchange( &gMDNSRecord );
-
-	// and reset the event handler
-
-	if ((gDdnsKey != NULL) && (gDdnsChangedEvent))
-	{
-		int err = RegNotifyChangeKeyValue(gDdnsKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gDdnsChangedEvent, TRUE);
-		check_noerr( err );
-	}
-}
-
-
-mDNSlocal void CALLBACK
-FileSharingChangedNotification( HANDLE event, void *context )
-{
-	// File sharing changed
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	FileSharingDidChange( &gMDNSRecord );
-
-	// and reset the event handler
-
-	if ((gFileSharingKey != NULL) && (gFileSharingChangedEvent))
-	{
-		int err = RegNotifyChangeKeyValue(gFileSharingKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFileSharingChangedEvent, TRUE);
-		check_noerr( err );
-	}
-}
-
-
-mDNSlocal void CALLBACK
-FirewallChangedNotification( HANDLE event, void *context )
-{
-	// Firewall configuration changed
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	FirewallDidChange( &gMDNSRecord );
-
-	// and reset the event handler
-
-	if ((gFirewallKey != NULL) && (gFirewallChangedEvent))
-	{
-		int err = RegNotifyChangeKeyValue(gFirewallKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gFirewallChangedEvent, TRUE);
-		check_noerr( err );
-	}
-}
-
-
-mDNSlocal void CALLBACK
-AdvertisedServicesChangedNotification( HANDLE event, void *context )
-{
-	// Ultimately we'll want to manage multiple services, but right now the only service
-	// we'll be managing is SMB.
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	FileSharingDidChange( &gMDNSRecord );
-
-	// and reset the event handler
-
-	if ( ( gAdvertisedServicesKey != NULL ) && ( gAdvertisedServicesChangedEvent ) )
-	{
-		int err = RegNotifyChangeKeyValue(gAdvertisedServicesKey, TRUE, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, gAdvertisedServicesChangedEvent, TRUE);
-		check_noerr( err );
-	}
-}
-
-
-mDNSlocal void CALLBACK
-SPSWakeupNotification( HANDLE event, void *context )
-{
-	LARGE_INTEGER timeout;
-
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	ReportStatus( EVENTLOG_INFORMATION_TYPE, "Maintenance wake" );
-
-	timeout.QuadPart  = kSPSMaintenanceWakePeriod;
-	timeout.QuadPart *= kSecondsTo100NSUnits;
-
-	SetWaitableTimer( gSPSSleepEvent, &timeout, 0, NULL, NULL, TRUE );
-}
-
-
-mDNSlocal void CALLBACK
-SPSSleepNotification( HANDLE event, void *context )
-{
-	DEBUG_UNUSED( event );
-	DEBUG_UNUSED( context );
-
-	ReportStatus( EVENTLOG_INFORMATION_TYPE, "Returning to sleep after maintenance wake" );
-
-	// Calling SetSuspendState() doesn't invoke our sleep handlers, so we'll
-	// call HandlePowerSuspend() explicity.  This will reset the 
-	// maintenance wake timers.
-
-	PowerSuspendNotification( gPowerSuspendEvent, NULL );
-	SetSuspendState( FALSE, FALSE, FALSE );
+	dlog( kDebugLevelTrace, DEBUG_NAME "setting up wait list done (err=%d %m)\n", err, err );
+	return( err );
 }
 
 
@@ -1990,15 +2044,13 @@ CoreCallback(mDNS * const inMDNS, mStatus status)
 
 
 //===========================================================================================================================
-//	UDSAcceptNotification
+//	UDSCanAccept
 //===========================================================================================================================
 
-mDNSlocal void CALLBACK
-UDSAcceptNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
+mDNSlocal void UDSCanAccept( mDNS * const inMDNS, HANDLE event, void * context )
 {
-	( void ) sock;
+	( void ) inMDNS;
 	( void ) event;
-	( void ) context;
 	
 	if ( gUDSCallback )
 	{
@@ -2008,20 +2060,16 @@ UDSAcceptNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 
 
 //===========================================================================================================================
-//	UDSReadNotification
+//	UDSCanRead
 //===========================================================================================================================
 
-mDNSlocal void CALLBACK
-UDSReadNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
+mDNSlocal void UDSCanRead( TCPSocket * sock )
 {
-	TCPSocket *tcpSock = ( TCPSocket* ) context;
+	udsEventCallback callback = ( udsEventCallback ) sock->userCallback;
 
-	( void ) sock;
-	( void ) event;
-
-	if ( tcpSock )
+	if ( callback )
 	{
-		tcpSock->userCallback( ( int ) tcpSock->fd, 0, tcpSock->userContext );
+		callback( (int) sock->fd, 0, sock->userContext );
 	}
 }
 
@@ -2030,14 +2078,16 @@ UDSReadNotification( SOCKET sock, LPWSANETWORKEVENTS event, void *context )
 //	udsSupportAddFDToEventLoop
 //===========================================================================================================================
 
+
 mStatus
 udsSupportAddFDToEventLoop( SocketRef fd, udsEventCallback callback, void *context, void **platform_data)
 {
 	mStatus err = mStatus_NoError;
 
 	// We are using some knowledge of what is being passed to us here.  If the fd is a listen socket,
-	// then the "context" parameter is NULL.  If it is an actual read/write socket, then the "context"
-	// parameter is not null.
+	// then the "callback" parameter is NULL.  If it is an actual read/write socket, then the "callback"
+	// parameter is not null. This is important because we use waitable events for the listen socket
+	// and alertable I/O for the read/write sockets.
 
 	if ( context )
 	{
@@ -2048,21 +2098,27 @@ udsSupportAddFDToEventLoop( SocketRef fd, udsEventCallback callback, void *conte
 		mDNSPlatformMemZero( sock, sizeof( TCPSocket ) );
 
 		sock->fd				= (SOCKET) fd;
+		sock->readEventHandler	= UDSCanRead;
 		sock->userCallback		= callback;
 		sock->userContext		= context;
 		sock->m					= &gMDNSRecord;
 
-		*platform_data = sock;
-
-		err = mDNSPollRegisterSocket( sock->fd, FD_READ | FD_CLOSE, UDSReadNotification, sock );
+		err = TCPAddSocket( sock->m, sock );
 		require_noerr( err, exit );
+
+		*platform_data = sock;
 	}
 	else
 	{
 		gUDSSocket		= fd;
 		gUDSCallback	= callback;
-
-		err = mDNSPollRegisterSocket( gUDSSocket, FD_ACCEPT | FD_CLOSE, UDSAcceptNotification, NULL );
+		gUDSEvent		= CreateEvent( NULL, FALSE, FALSE, NULL );
+		err = translate_errno( gUDSEvent, (mStatus) GetLastError(), kUnknownErr );
+		require_noerr( err, exit ); 
+		err = WSAEventSelect( fd, gUDSEvent, FD_ACCEPT | FD_CLOSE );
+		err = translate_errno( err == 0, WSAGetLastError(), kNoResourcesErr );
+		require_noerr( err, exit );
+		err = RegisterWaitableEvent( &gMDNSRecord, gUDSEvent, context, UDSCanAccept );
 		require_noerr( err, exit );
 	}
 
@@ -2091,14 +2147,6 @@ udsSupportReadFD( SocketRef fd, char *buf, int len, int flags, void *platform_da
 	{
 		ret = 0;
 	}
-	else if ( !ret && ( WSAGetLastError() == WSAEWOULDBLOCK ) )
-	{
-		// mDNSPlatformReadTCP will return 0 if it gets WSAEWOULDBLOCK, but
-		// that caller of this routine interprets that as close connection.
-		// We'll fix that by returning -1 in that case.
-
-		ret = -1;
-	}
 
 exit:
 
@@ -2111,8 +2159,6 @@ udsSupportRemoveFDFromEventLoop( SocketRef fd, void *platform_data)		// Note: Th
 {
 	mStatus err = kNoErr;
 
-	mDNSPollUnregisterSocket( fd );
-
 	if ( platform_data != NULL )
 	{
 		TCPSocket * sock;
@@ -2121,6 +2167,13 @@ udsSupportRemoveFDFromEventLoop( SocketRef fd, void *platform_data)		// Note: Th
 		sock = ( TCPSocket* ) platform_data;
 		check( sock->fd == fd );
 		mDNSPlatformTCPCloseConnection( sock );
+	}
+	else if ( gUDSEvent != NULL )
+	{
+		UnregisterWaitableEvent( &gMDNSRecord, gUDSEvent );
+		WSAEventSelect( fd, gUDSEvent, 0 );
+		CloseHandle( gUDSEvent );
+		gUDSEvent = NULL;
 	}
 
 	return err;
@@ -2350,7 +2403,7 @@ SetLLRoute( mDNS * const inMDNS )
 	// they have a permanent route to link-local addresses. Otherwise,
 	// set a route to link local addresses (169.254.0.0)
 	//
-	if ( ( inMDNS->p->osMajorVersion < 6 ) && gServiceManageLLRouting && !gPlatformStorage.registeredLoopback4 )
+	if ( ( gOSMajorVersion < 6 ) && gServiceManageLLRouting && !gPlatformStorage.registeredLoopback4 )
 	{
 		DWORD				ifIndex;
 		MIB_IPFORWARDROW	rowExtant;
