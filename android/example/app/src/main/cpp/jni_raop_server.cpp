@@ -35,6 +35,10 @@
 #include <cmath>
 #include <string>
 //#include "raop_server.h"
+#include "../third_party/mDNSResponder/mDNSResponderLib.h"
+#include "HHMDNSDriver.h"
+
+#include <unistd.h>
 
 static JavaVM* g_JavaVM;
 
@@ -117,7 +121,13 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
     void* cls = (void *) env->NewGlobalRef(object);
     //raop_server_t* raop_server = raop_server_init(cls, audio_process, video_process, video_destroy);
     //raop_server_start(raop_server, device_name, (char*) hw_addr, hw_addr_len);
-    int ret = HHAirPlayStart("HelloAirplay20240511");
+    DNSServiceStart();
+
+    sleep(2);
+
+    HHRegisterService("abcd");
+
+    //int ret = HHAirPlayStart("HelloAirplay202405112121");
     env->ReleaseByteArrayElements(hwAddr, hw_addr, 0);
     env->ReleaseStringUTFChars(deviceName, device_name);
     return (jlong) (void *) 0;//raop_server;

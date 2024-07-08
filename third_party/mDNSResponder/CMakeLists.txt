@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 
 # Embedded，default ON
-option(Embed "Compile for embedded system" OFF)
+option(Embed "Compile for embedded system" ON)
 
 # print Embedded
 message(STATUS "Embedded: ${Embed}")

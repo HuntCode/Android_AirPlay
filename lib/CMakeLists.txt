@@ -7,6 +7,7 @@ set(distribution_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../distribution)
 
 set(MDNS_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/mDNSResponder)
 set(FDK_AAC_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/fdk-aac)
+set(RAPIDJSON_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/rapidjson)
 
 add_subdirectory(${MDNS_LIB_PATH} build_mdns)
 add_subdirectory(${FDK_AAC_LIB_PATH} fdk_out)
@@ -35,6 +36,7 @@ include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/renderers
         ${distribution_DIR}/plist/include
         ${distribution_DIR}/openssl/include
+        ${RAPIDJSON_LIB_PATH}/include
         )
 
 set(LIB_LLHTTP_SOURCES ${LIB_LLHTTP_SOURCES}
@@ -82,6 +84,8 @@ set(AIRPLAY_SOURCES
         ${LIB_SOURCES}
         ${RENDERERS_SOURCES}
         airplay.cpp
+        MDNSClient.cpp
+        HHMDNSDriver.cpp
         )
 
 if(WIN32)
