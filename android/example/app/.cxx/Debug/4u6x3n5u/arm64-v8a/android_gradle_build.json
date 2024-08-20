@@ -1,0 +1,78 @@
+{
+  "buildFiles": [
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\lib\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\third_party\\fdk-aac\\CMakeLists.txt",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\third_party\\mDNSResponder\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\.cxx\\Debug\\4u6x3n5u\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\.cxx\\Debug\\4u6x3n5u\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "airplay::@49c19032a5bd8a891ea0": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "airplay",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libairplay.so",
+      "runtimeFiles": [
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\distribution\\plist\\lib\\arm64-v8a\\libplist.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libfdk-aac.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so"
+      ]
+    },
+    "dns_sd::@a955259836325659df9c": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "dns_sd",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so",
+      "runtimeFiles": [
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so"
+      ]
+    },
+    "fdk-aac::@27a668b8b40e86644158": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "fdk-aac",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libfdk-aac.so",
+      "runtimeFiles": []
+    },
+    "raopserver_android::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "raopserver_android",
+      "output": "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libraopserver_android.so",
+      "runtimeFiles": [
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libairplay.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\distribution\\plist\\lib\\arm64-v8a\\libplist.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libfdk-aac.so",
+        "C:\\A_ReserveLand\\HHCast\\Z_Labs\\Android_AirPlay\\android\\example\\app\\build\\intermediates\\cxx\\Debug\\4u6x3n5u\\obj\\arm64-v8a\\libdns_sd.so",
+        "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\aarch64-linux-android\\24\\liblog.so"
+      ]
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "C:\\Users\\wanglv\\AppData\\Local\\Android\\Sdk\\ndk\\23.1.7779620\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}

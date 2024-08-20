@@ -1,0 +1,1542 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/android/example/app/build/intermediates/cxx/Debug/4u6x3n5u/obj/arm64-v8a/libfdk-aac.so"
+		}
+	],
+	"backtrace" : 1,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"add_definitions",
+			"target_include_directories"
+		],
+		"files" : 
+		[
+			"C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/CMakeLists.txt",
+			"C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/lib/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 38,
+				"parent" : 0
+			},
+			{
+				"file" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 1,
+				"line" : 4,
+				"parent" : 2
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 57,
+				"parent" : 0
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : "-std=c++11 -frtti -fexceptions -g  -fno-limit-debug-info -fPIC"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 3,
+					"define" : "HAS_HH_RENDERER"
+				},
+				{
+					"define" : "fdk_aac_EXPORTS"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libAACdec/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libAACenc/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libPCMutils/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libFDK/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libSYS/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libMpegTPDec/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libMpegTPEnc/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libSBRdec/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libSBRenc/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libArithCoding/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libDRCdec/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libSACdec/include"
+				},
+				{
+					"backtrace" : 4,
+					"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/./libSACenc/include"
+				}
+			],
+			"language" : "CXX",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				50,
+				51,
+				52,
+				53,
+				54,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				68,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75,
+				76,
+				77,
+				78,
+				79,
+				80,
+				81,
+				82,
+				83,
+				84,
+				85,
+				86,
+				87,
+				88,
+				89,
+				90,
+				91,
+				92,
+				93,
+				94,
+				95,
+				96,
+				97,
+				98,
+				99,
+				100,
+				101,
+				102,
+				103,
+				104,
+				105,
+				106,
+				107,
+				108,
+				109,
+				110,
+				111,
+				112,
+				113,
+				114,
+				115,
+				116,
+				117,
+				118,
+				119,
+				120,
+				121,
+				122,
+				123,
+				124,
+				125,
+				126,
+				127,
+				128,
+				129,
+				130,
+				131,
+				132,
+				133,
+				134,
+				135,
+				136,
+				137,
+				138,
+				139,
+				140,
+				141,
+				142,
+				143,
+				144,
+				145,
+				146,
+				147,
+				148,
+				149,
+				150,
+				151,
+				152,
+				153,
+				154,
+				155,
+				156,
+				157,
+				158,
+				159,
+				160,
+				161,
+				162,
+				163,
+				164,
+				165,
+				166,
+				167,
+				168,
+				169,
+				170
+			],
+			"sysroot" : 
+			{
+				"path" : "C:/Users/wanglv/AppData/Local/Android/Sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+			}
+		}
+	],
+	"id" : "fdk-aac::@27a668b8b40e86644158",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-Wl,--build-id=sha1 -Wl,--no-rosegment -Wl,--fatal-warnings -Qunused-arguments -Wl,--no-undefined",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-static-libstdc++ -latomic -lm",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX",
+		"sysroot" : 
+		{
+			"path" : "C:/Users/wanglv/AppData/Local/Android/Sdk/ndk/23.1.7779620/toolchains/llvm/prebuilt/windows-x86_64/sysroot"
+		}
+	},
+	"name" : "fdk-aac",
+	"nameOnDisk" : "libfdk-aac.so",
+	"paths" : 
+	{
+		"build" : "build_raop/fdk_out",
+		"source" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2,
+				3,
+				4,
+				5,
+				6,
+				7,
+				8,
+				9,
+				10,
+				11,
+				12,
+				13,
+				14,
+				15,
+				16,
+				17,
+				18,
+				19,
+				20,
+				21,
+				22,
+				23,
+				24,
+				25,
+				26,
+				27,
+				28,
+				29,
+				30,
+				31,
+				32,
+				33,
+				34,
+				35,
+				36,
+				37,
+				38,
+				39,
+				40,
+				41,
+				42,
+				43,
+				44,
+				45,
+				46,
+				47,
+				48,
+				49,
+				50,
+				51,
+				52,
+				53,
+				54,
+				55,
+				56,
+				57,
+				58,
+				59,
+				60,
+				61,
+				62,
+				63,
+				64,
+				65,
+				66,
+				67,
+				68,
+				69,
+				70,
+				71,
+				72,
+				73,
+				74,
+				75,
+				76,
+				77,
+				78,
+				79,
+				80,
+				81,
+				82,
+				83,
+				84,
+				85,
+				86,
+				87,
+				88,
+				89,
+				90,
+				91,
+				92,
+				93,
+				94,
+				95,
+				96,
+				97,
+				98,
+				99,
+				100,
+				101,
+				102,
+				103,
+				104,
+				105,
+				106,
+				107,
+				108,
+				109,
+				110,
+				111,
+				112,
+				113,
+				114,
+				115,
+				116,
+				117,
+				118,
+				119,
+				120,
+				121,
+				122,
+				123,
+				124,
+				125,
+				126,
+				127,
+				128,
+				129,
+				130,
+				131,
+				132,
+				133,
+				134,
+				135,
+				136,
+				137,
+				138,
+				139,
+				140,
+				141,
+				142,
+				143,
+				144,
+				145,
+				146,
+				147,
+				148,
+				149,
+				150,
+				151,
+				152,
+				153,
+				154,
+				155,
+				156,
+				157,
+				158,
+				159,
+				160,
+				161,
+				162,
+				163,
+				164,
+				165,
+				166,
+				167,
+				168,
+				169,
+				170
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/FDK_delay.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aac_ram.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aac_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_drc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_hcr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_hcr_bit.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_hcrs.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_pns.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdec_tns.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdecoder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/aacdecoder_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/block.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/channel.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/channelinfo.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/conceal.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/ldfiltbank.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/pulsedata.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/rvlc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/rvlcbit.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/rvlcconceal.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/stereo.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_ace_d4t64.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_ace_ltp.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_acelp.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_fac.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_lpc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_lpd.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACdec/src/usacdec_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacEnc_ram.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacEnc_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacenc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacenc_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacenc_pns.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/aacenc_tns.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/adj_thr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/band_nrg.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/bandwidth.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/bit_cnt.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/bitenc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/block_switch.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/channel_map.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/chaosmeasure.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/dyn_bits.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/grp_data.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/intensity.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/line_pe.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/metadata_compressor.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/metadata_main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/mps_main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/ms_stereo.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/noisedet.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/pnsparam.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/pre_echo_control.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/psy_configuration.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/psy_main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/qc_main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/quantize.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/sf_estim.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/spreading.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/tonality.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libAACenc/src/transform.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libPCMutils/src/limiter.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libPCMutils/src/pcm_utils.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libPCMutils/src/pcmdmx_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_bitbuffer.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_core.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_crc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_decorrelate.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_hybrid.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_lpc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_matrixCalloc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_qmf_domain.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_tools_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/FDK_trigFcts.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/autocorr2nd.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/dct.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/fft.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/fft_rad2.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/fixpoint_math.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/huff_nodes.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/mdct.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/nlc_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/qmf.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libFDK/src/scale.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSYS/src/genericStds.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSYS/src/syslib_channelMapDescr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_adif.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_adts.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_asc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_drm.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_latm.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPDec/src/tpdec_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPEnc/src/tpenc_adif.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPEnc/src/tpenc_adts.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPEnc/src/tpenc_asc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPEnc/src/tpenc_latm.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libMpegTPEnc/src/tpenc_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/HFgen_preFlat.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/env_calc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/env_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/env_extr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/hbe.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/huff_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/lpp_tran.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/psbitdec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/psdec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/psdec_drm.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/psdecrom_drm.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/pvc_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbr_crc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbr_deb.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbr_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbr_ram.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbr_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbrdec_drc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbrdec_freq_sca.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRdec/src/sbrdecoder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/bit_sbr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/code_env.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/env_bit.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/env_est.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/fram_gen.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/invf_est.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/mh_det.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/nf_est.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/ps_bitenc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/ps_encode.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/ps_main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/resampler.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/sbr_encoder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/sbr_misc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/sbrenc_freq_sca.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/sbrenc_ram.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/sbrenc_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/ton_corr.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSBRenc/src/tran_det.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libArithCoding/src/ac_arith_coder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/FDK_drcDecLib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcDec_gainDecoder.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcDec_reader.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcDec_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcDec_selectionProcess.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcDec_tools.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcGainDec_init.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcGainDec_preprocess.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libDRCdec/src/drcGainDec_process.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_bitdec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_calcM1andM2.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_dec.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_dec_conceal.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_dec_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_process.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_qmf.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_reshapeBBEnv.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_rom.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_smoothing.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_stp.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACdec/src/sac_tsd.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_bitstream.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_delay.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_dmx_tdom_enh.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_filter.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_framewindowing.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_huff_tab.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_lib.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_nlc_enc.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_onsetdetect.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_paramextract.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_staticgain.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_tree.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 1,
+			"compileGroupIndex" : 0,
+			"path" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/third_party/fdk-aac/libSACenc/src/sacenc_vectorfunctions.cpp",
+			"sourceGroupIndex" : 0
+		}
+	],
+	"type" : "SHARED_LIBRARY"
+}

@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "build_raop",
+		"source" : "C:/A_ReserveLand/HHCast/Z_Labs/Android_AirPlay/lib"
+	}
+}
