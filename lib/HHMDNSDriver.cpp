@@ -15,6 +15,12 @@
 #include <arpa/inet.h> // for inet_ntop
 #endif
 
+#include <android/log.h>
+
+#define LOG_TAG "WLNativeLog"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
 DNSServiceRef RegServiceRef;
 DNSServiceRef BrowseServiceRef;
 std::shared_ptr<MDNSClient> mdnsClient = std::make_shared<MDNSClient>();
@@ -37,14 +43,20 @@ int HHRegisterService(const char* deviceName)
     })";
 
 
-    //mdnsClient->RegisterService("MyDeviceService_Android222111000", "_wsraop._tcp", 7890, jsonString1);
+    //mdnsClient->RegisterService("MyDeviceService", "_wsraop._tcp", 7890, jsonString1);
     //mdnsClient->RegisterService("MyDeviceService2", "_smart._tcp", 8899, jsonString2);
 
     //mdnsClient->RegisterService("MyDeviceService_Android7767", "_wsraop._tcp", 7767, jsonString1);
 
-    mdnsClient->StartBrowseService("_wsraop._tcp", [](const std::string& jsonTxtRecord) {
+    mdnsClient->StartBrowseService("_hhclient._tcp", [](const std::string& jsonTxtRecord) {
         std::cout << "Discovered JSON TXT Record: " << jsonTxtRecord << std::endl;
+        LOGI("Discovered JSON TXT Record: %s", jsonTxtRecord.c_str());
     });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+    //mdnsClient->StopBrowseService("_hhclient._tcp");
+
     //mdnsClient->StartBrowseService("_smart._tcp", [](const std::string& jsonTxtRecord) {
     //    std::cout << "Discovered JSON TXT Record: " << jsonTxtRecord << std::endl;
     //});
