@@ -108,27 +108,6 @@ struct	OpContext
 	JNIEnv *pLoopEnv = NULL;
 #endif
 
-#ifdef EMBEDDED
-int init();
-int loop();
-void stopLoop();
-
-JNIEXPORT jint JNICALL Java_com_github_druk_dnssd_DNSSDEmbedded_nativeInit( JNIEnv *pEnv, jclass cls)
-{
-	pLoopEnv = pEnv;
-  	return init();
-}
-
-JNIEXPORT jint JNICALL Java_com_github_druk_dnssd_DNSSDEmbedded_nativeLoop( JNIEnv *pEnv, jclass cls)
-{
-	return loop();
-}
-
-JNIEXPORT void JNICALL Java_com_github_druk_dnssd_DNSSDEmbedded_nativeExit( JNIEnv *pEnv, jclass cls)
-{
-	stopLoop();
-}
-#endif
 
 JNIEXPORT jint JNICALL Java_com_github_druk_dnssd_AppleDNSSD_InitLibrary( JNIEnv *pEnv, jclass cls, 
 						jint callerVersion)

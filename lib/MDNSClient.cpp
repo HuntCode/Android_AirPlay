@@ -128,8 +128,8 @@ void MDNSClient::StartBrowseService(const std::string& regtype, DeviceInfoCallba
         DNSServiceErrorType errorCode;
         DNSServiceRef serviceRef;
 
-        //auto svcContext = std::make_shared<ServiceContext>(ServiceContext{ this, regtype, "" }); // 使用 shared_ptr 管理 ServiceContext
-        ServiceContext* svcContext = new ServiceContext{ this, regtype, "" };
+        //svcContext由DNSServiceBrowse的BrowseCallback共用，注意Android平台需要各自创建新的context
+        ServiceContext* svcContext = new ServiceContext{ this, regtype, "", "" };
         errorCode = DNSServiceBrowse(&serviceRef, 0, 0, regtype.c_str(), "local.", BrowseCallback, svcContext);
         if (errorCode != kDNSServiceErr_NoError) {
             //ErrorL << "Error discovering service: " << errorCode << std::endl;
@@ -143,11 +143,9 @@ void MDNSClient::StartBrowseService(const std::string& regtype, DeviceInfoCallba
         LOGI("Started browsing for service: %s", regtype.c_str());
 
         int dns_sd_fd = DNSServiceRefSockFD(serviceRef);
-        //DebugL << "dns_sd_fd: "<< dns_sd_fd << std::endl;
-        LOGI("dns_sd_fd: %d", dns_sd_fd);
-
         if (dns_sd_fd == -1) {
-            LOGE("Error getting socket file descriptor: %s", strerror(errno));
+            LOGE("dns_sd_fd: %d", dns_sd_fd);
+            LOGE("socket file descriptor error: %s", strerror(errno));
             DNSServiceRefDeallocate(serviceRef);
             return;
         }
@@ -194,7 +192,7 @@ void MDNSClient::StartBrowseService(const std::string& regtype, DeviceInfoCallba
         std::lock_guard<std::mutex> lock(g_browseRefMutex);
         DNSServiceRefDeallocate(m_browseRefs[regtype]);
         m_browseRefs.erase(regtype);
-        LOGI("[003]Service discovery thread stopped: %s", regtype.c_str());
+        LOGI("Service discovery thread stopped: %s", regtype.c_str());
     });
 }
 
@@ -208,7 +206,7 @@ void MDNSClient::StopBrowseService(const std::string& regtype)
             if (m_browseRefs.find(regtype) != m_browseRefs.end()) {
                 int dns_sd_fd = DNSServiceRefSockFD(m_browseRefs[regtype]);
                 if (dns_sd_fd != -1) {
-                    LOGI("Before closesocket... dns_sd_fd: %d", dns_sd_fd);
+                    //LOGI("Before closesocket... dns_sd_fd: %d", dns_sd_fd);
 #if defined(WIN32)
                     closesocket(dns_sd_fd);
 #else
@@ -245,8 +243,6 @@ void MDNSClient::OnDeviceInfoCallback(const std::string& regtype, const std::str
     }
 }
 
-std::mutex g_browsecbMtx;
-
 void DNSSD_API MDNSClient::BrowseCallback(
         DNSServiceRef serviceRef,
         DNSServiceFlags flags,
@@ -257,10 +253,7 @@ void DNSSD_API MDNSClient::BrowseCallback(
         const char* replyDomain,
         void* context)
 {
-#if defined(ANDROID)
-    //std::lock_guard<std::mutex> lock(g_browsecbMtx);
-#endif
-    LOGI("Enter MDNSClient::BrowseCallback");
+    //LOGI("Enter MDNSClient::BrowseCallback");
     if (errorCode == kDNSServiceErr_NoError) {
         ServiceContext* svcContext = static_cast<ServiceContext*>(context);
         if (flags & kDNSServiceFlagsAdd) {
@@ -276,8 +269,8 @@ void DNSSD_API MDNSClient::BrowseCallback(
         // Embedded版本DNSServiceRef每次都会malloc内存，不同于Windows等平台DNSServiceRef是共用的
         // 在回调中最后进行释放比较合适
         DNSServiceRef resolveRef;
-        DNSServiceResolve(&serviceRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, context);
-        LOGI("Create resolveRef address: %p", static_cast<void*>(resolveRef));
+        DNSServiceResolve(&resolveRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, context);
+        //LOGI("Create resolveRef address: %p", static_cast<void*>(resolveRef));
 #else
         DNSServiceResolve(&serviceRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, context);
             DNSServiceProcessResult(serviceRef);
@@ -300,33 +293,10 @@ void DNSSD_API MDNSClient::ResolveCallback(
         const unsigned char* txtRecord,
         void* context)
 {
-#if defined(ANDROID)
-    //std::lock_guard<std::mutex> lock(g_browsecbMtx);
-#endif
     LOGI("Enter MDNSClient::ResolveCallback");
-    //auto svcContext = std::shared_ptr<MDNSClient::ServiceContext>(static_cast<MDNSClient::ServiceContext*>(context));
     ServiceContext* svcContext = static_cast<ServiceContext*>(context);
-    //LOGI("svcContext address: %p", static_cast<void*>(svcContext));
     if (errorCode == kDNSServiceErr_NoError) {
-        //LOGI("before  MDNSClient* client = svcContext->client;");
         MDNSClient* client = svcContext->client;
-        //LOGI("after  MDNSClient* client = svcContext->client;");
-        if (client == nullptr) {
-            LOGI("client == nullptr");
-            return;
-        }
-
-        if (fullname == nullptr) {
-            LOGI("fullname == nullptr");
-            //return;
-        }
-
-        LOGI("svcContext->fullname: %s", svcContext->fullname.c_str());
-        if(svcContext->fullname.empty())
-        {
-            //LOGI("svcContext->fullname is empty()");
-        }
-
         std::string jsonTxtRecord = client->parseTXTRecordToJson(txtRecord, txtLen);
 
         std::string fullServiceName = fullname;
@@ -336,7 +306,7 @@ void DNSSD_API MDNSClient::ResolveCallback(
 
         std::string serviceType = fullServiceName.substr(start, end - start);
 
-        LOGI("jsonTxtRecord: %s", jsonTxtRecord.c_str());
+        LOGI("ResolveCallback TXTRecord: %s", jsonTxtRecord.c_str());
         // 保存设备信息
         client->m_deviceInfos[fullname] = { jsonTxtRecord, ntohs(port) };
 
@@ -347,7 +317,6 @@ void DNSSD_API MDNSClient::ResolveCallback(
         // Embedded版本DNSServiceRef每次都会malloc内存，不同于Windows等平台DNSServiceRef是共用的
         // 在回调中最后进行释放比较合适
         DNSServiceRef addressRef;
-        //LOGI("Create addressRef...");
 
         //因为不是Windows平台这种顺序执行，重新创建一个新的上下文
         ServiceContext* newSvcContext = new ServiceContext{ client, svcContext->regtype, fullname, svcContext->action};
@@ -400,10 +369,6 @@ void DNSSD_API MDNSClient::AddrInfoCallback(
         void* context)
 {
     LOGI("Enter MDNSClient::AddrInfoCallback");
-#if defined(ANDROID)
-    //std::lock_guard<std::mutex> lock(g_browsecbMtx);
-#endif
-    //auto svcContext = std::shared_ptr<MDNSClient::ServiceContext>(static_cast<MDNSClient::ServiceContext*>(context));
     ServiceContext* svcContext = static_cast<ServiceContext*>(context);
     if (errorCode == kDNSServiceErr_NoError) {
         char ipStr[INET_ADDRSTRLEN];
@@ -411,18 +376,13 @@ void DNSSD_API MDNSClient::AddrInfoCallback(
 
         LOGI("Resolved IP address: %s", ipStr);
 
-        //LOGI("before  MDNSClient* client = svcContext->client;");
         MDNSClient* client = svcContext->client;
-        //LOGI("after  MDNSClient* client = svcContext->client;");
         if (client == nullptr) {
-            //LOGI("client == nullptr ");
+            LOGI("client == nullptr ");
             return;
         }
 
-        LOGI("svcContext->fullname: %s", svcContext->fullname.c_str());
-        if(svcContext->fullname.empty()){
-            //LOGI("svcContext->fullname is empty()");
-        }
+        LOGI("AddrInfoCallback svcContext->fullname: %s", svcContext->fullname.c_str());
 
         // 找到当前解析的设备信息
         auto it = client->m_deviceInfos.find(svcContext->fullname);

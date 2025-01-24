@@ -300,40 +300,7 @@ void DNSServiceStop()
 	stopNow = 1;
 }
 
-int init()
-	{
-	mStatus					err;
-
-	LogMsg("%s starting", mDNSResponderVersionString);
-
-	err = mDNS_Init(&mDNSStorage, &PlatformStorage, gRRCache, RR_CACHE_SIZE, mDNS_Init_AdvertiseLocalAddresses, 
-					mDNS_StatusCallback, mDNS_Init_NoInitCallbackContext); 
- 
-	return err;
-	}
-
-int loop(){
-	mStatus					err;
-	Reconfigure(&mDNSStorage);
-
-	err = MainLoop(&mDNSStorage);
- 
-	LogMsg("%s stopping", mDNSResponderVersionString);
-
-	mDNS_Close(&mDNSStorage);
- 
- #if MDNS_DEBUGMSGS > 0
-	printf("mDNSResponder exiting normally with %ld\n", err);
- #endif
- 
-	return err;
-}	
-
-void stopLoop()
-{
-	stopNow = 1;
-}
-#endif
+#endif  // EMBEDDED
 
 //		uds_daemon support		////////////////////////////////////////////////////////////
 
