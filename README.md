@@ -1,3 +1,4 @@
+[中文版](https://github.com/HuntCode/Android_AirPlay/blob/master/README_CN.md)
 # Introduction
 
 `Airplay` screen mirror server based on `Android` and provide `WIN32` build. 99% written in C, easy to transplant, welcome to PR and ISSUE.
