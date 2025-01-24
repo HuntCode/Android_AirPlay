@@ -113,6 +113,8 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
     return JNI_VERSION_1_6;
 }
 
+static bool ServerStart = false;
+
 extern "C" JNIEXPORT jlong JNICALL
 Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstring deviceName, jbyteArray hwAddr) {
     const char *device_name = env->GetStringUTFChars(deviceName, 0);
@@ -121,9 +123,12 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
     void* cls = (void *) env->NewGlobalRef(object);
     //raop_server_t* raop_server = raop_server_init(cls, audio_process, video_process, video_destroy);
     //raop_server_start(raop_server, device_name, (char*) hw_addr, hw_addr_len);
-    DNSServiceStart();
 
-    sleep(2);
+    if(!ServerStart){
+        DNSServiceStart();
+        sleep(2);
+        ServerStart = true;
+    }
 
     HHRegisterService("abcd");
 
