@@ -117,9 +117,9 @@ public class RaopServer {
     }
 
     public void stopServer() {
-        if (mServerId != 0) {
+        //if (mServerId != 0) {
             stop(mServerId);
-        }
+        //}
         mServerId = 0;
         mBasePts = 0;
         mAVPlayer.stop();

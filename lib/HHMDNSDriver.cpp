@@ -55,7 +55,21 @@ int HHRegisterService(const char* deviceName)
         LOGI("Discovered JSON TXT Record: %s", jsonTxtRecord.c_str());
     });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    return 0;
+}
+
+int HHUnRegisterService()
+{
+    // for test
+    mdnsClient->UnregisterService("Service1", "_hhclient._tcp");
+    mdnsClient->UnregisterService("Service2", "_hhclient._tcp");
+    mdnsClient->UnregisterService("Service3", "_hhclient._tcp");
+    mdnsClient->UnregisterService("Service4", "_hhclient._tcp");
+    mdnsClient->UnregisterService("Service5", "_hhclient._tcp");
+    mdnsClient->UnregisterService("Service6", "_hhclient._tcp");
+
+    // for remove callback
+    sleep(5);
 
     mdnsClient->StopBrowseService("_hhclient._tcp");
 

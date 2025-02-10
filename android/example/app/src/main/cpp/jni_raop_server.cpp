@@ -150,4 +150,11 @@ Java_com_fang_myapplication_RaopServer_stop(JNIEnv* env, jobject object, jlong o
 //    auto obj = (jobject) raop_server_get_cls(raop_server);
 //    raop_server_destroy(raop_server);
 //    env->DeleteGlobalRef(obj);
+
+    HHUnRegisterService();
+
+    if(ServerStart){
+        DNSServiceStop();
+        ServerStart = false;
+    }
 }
