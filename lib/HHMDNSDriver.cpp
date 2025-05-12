@@ -2,7 +2,7 @@
 //
 
 #include <iostream>
-#include "MDNSClient_old.h"
+#include "MDNSClient.h"
 #include "HHMDNSDriver.h"
 #include "airplay.h"
 
