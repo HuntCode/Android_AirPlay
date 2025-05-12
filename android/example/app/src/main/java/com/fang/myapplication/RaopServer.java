@@ -113,7 +113,7 @@ public class RaopServer {
         if (mServerId == 0) {
             mServerId = start(deviceName, hdAddr);
         }
-        mAVPlayer.start();
+        //mAVPlayer.start();
     }
 
     public void stopServer() {
@@ -132,8 +132,18 @@ public class RaopServer {
         return 0;
     }
 
+    public void startBrowseService(){
+        startBrowse();
+    }
+
+    public void stopBrowseService(){
+        stopBrowse();
+    }
+
     private native long start(String deviceName, byte[] hdAddr);
     private native void stop(long serverId);
     private native int getPort(long serverId);
+    private native void startBrowse();
+    private native void stopBrowse();
 
 }

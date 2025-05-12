@@ -1,9 +1,10 @@
-#include "MDNSClient.h"
+﻿#include "MDNSClient.h"
 #include "rapidjson/document.h"
 #include "rapidjson/writer.h"
 #include "rapidjson/stringbuffer.h"
-//#include "logger.h"
-#define ANDROID
+#include <iostream>
+#include <cstring>
+#include <mutex>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -14,45 +15,121 @@
 #include <arpa/inet.h> // for inet_ntop
 #endif
 
+#ifdef __ANDROID__
 #include <android/log.h>
 
 #define LOG_TAG "WLNativeLog"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#else
+#include "log/logger.h"
+#endif
 
-std::mutex g_browseRefMutex;
+std::mutex g_shareRefMutex;
 
-MDNSClient::MDNSClient()
+DNSServiceErrorType g_error;
+std::map<std::string, DNSServiceRef> g_shareRefs;
+
+
+MDNSClient::MDNSClient() 
 {
 }
 
-MDNSClient::~MDNSClient()
+MDNSClient::~MDNSClient() 
 {
-    for (auto& pair : m_browseRunning) {
-        pair.second = false;
-    }
-    for (auto& pair : m_browseThreads) {
-        if (pair.second.joinable()) {
-            pair.second.join();
+    Release();
+}
+
+void MDNSClient::Release() {
+    // 停止所有浏览线程并释放 DNSServiceRef
+    for (auto& [regtype, context] : m_browseContexts) {
+        context.running = false;
+
+        for (auto& [instanceName, resolveRef] : context.resolveRefs) {
+            if (resolveRef) {
+                DNSServiceRefDeallocate(resolveRef);
+                //DebugL << "Deallocated resolveRef for: " << instanceName;
+                LOGI("Deallocated resolveRef for: %s", instanceName.c_str());
+            }
+        }
+
+        if (context.serviceRef) {
+            DNSServiceRefDeallocate(context.serviceRef);
+            context.serviceRef = nullptr;
+        }
+
+        if (context.browseThread.joinable()) {
+            context.browseThread.join();
         }
     }
+    m_browseContexts.clear();
 
+    // 释放注册服务资源
     for (auto& ref : m_registerRefs) {
         DNSServiceRefDeallocate(ref.second);
     }
+    m_registerRefs.clear();
 
-    for (auto& ref : m_browseRefs) {
-        DNSServiceRefDeallocate(ref.second);
+    // 释放共享连接
+    //for (auto& ref : g_shareRefs) {
+    //    DNSServiceRefDeallocate(ref.second);
+    //}
+    //g_shareRefs.clear();
+}
+
+void MDNSClient::AddResolveRef(const std::string& regtype, const std::string& instanceName, DNSServiceRef resolveRef) {
+    std::lock_guard<std::mutex> lock(m_contextMutex);
+    auto it = m_browseContexts.find(regtype);
+    if (it == m_browseContexts.end()) {
+        //DebugL << "Browse context not found for regtype: " << regtype;
+        LOGI("Browse context not found for regtype: %s", regtype.c_str());
+        return;
+    }
+
+    BrowseContext& ctx = it->second;
+
+    // 先清理可能存在的旧的
+    auto oldRefIt = ctx.resolveRefs.find(instanceName);
+    if (oldRefIt != ctx.resolveRefs.end()) {
+        //DebugL << "Deallocated old resolveRef for: " << instanceName;
+        LOGI("Deallocated old resolveRef for: %s", instanceName.c_str());
+        DNSServiceRefDeallocate(oldRefIt->second);
+        ctx.resolveRefs.erase(oldRefIt);
+    }
+
+    ctx.resolveRefs[instanceName] = resolveRef;
+}
+
+void MDNSClient::RemoveResolveRef(const std::string& regtype, const std::string& instanceName) {
+
+    std::string extractInstanceName = ExtractInstanceName(instanceName);
+
+    std::lock_guard<std::mutex> lock(m_contextMutex);
+    auto it = m_browseContexts.find(regtype);
+    if (it == m_browseContexts.end()) {
+        //DebugL << "Browse context not found for regtype: " << regtype;
+        return;
+    }
+
+    BrowseContext& ctx = it->second;
+
+    auto refIt = ctx.resolveRefs.find(extractInstanceName);
+    if (refIt != ctx.resolveRefs.end()) {
+        if (refIt->second) {
+            DNSServiceRefDeallocate(refIt->second);
+            //DebugL << "Deallocated resolveRef for " << extractInstanceName;
+        }
+        ctx.resolveRefs.erase(refIt);
     }
 }
 
-int MDNSClient::RegisterService(const std::string& name,
-                                const std::string& regtype,
-                                uint16_t port,
-                                const std::string& jsonString)
+int MDNSClient::RegisterService(const std::string& name, 
+    const std::string& regtype,
+    uint16_t port,
+    const std::string& jsonString)
 {
     if (m_registerRefs.find(name + regtype) != m_registerRefs.end()) {
-        //ErrorL << "Service already registered: " << name << " with type: " << regtype << std::endl;
+        //DebugL << "Service already registered: " << name << " with type: " << regtype << std::endl;
         return kDNSServiceErr_AlreadyRegistered;
     }
 
@@ -74,22 +151,20 @@ int MDNSClient::RegisterService(const std::string& name,
             }
         }
         else {
-            //ErrorL << "Error parsing JSON: " << doc.GetParseError() << std::endl;
+	        //ErrorL << "Error parsing JSON: " << doc.GetParseError() << std::endl;
             return kDNSServiceErr_Invalid;
         }
     }
 
     errorCode = DNSServiceRegister(&serviceRef, 0, 0, name.c_str(), regtype.c_str(), "", nullptr,
-                                   htons(port), TXTRecordGetLength(&txtRecord),
-                                   TXTRecordGetBytesPtr(&txtRecord), nullptr, nullptr);
+        htons(port), TXTRecordGetLength(&txtRecord),
+        TXTRecordGetBytesPtr(&txtRecord), nullptr, nullptr);
     if (errorCode != kDNSServiceErr_NoError) {
         //ErrorL << "Error registering service: " << errorCode << std::endl;
-        LOGE("Error registering service: %d", errorCode);
     }
     else {
         m_registerRefs[name + regtype] = serviceRef;
-        //DebugL << "Service registered: " << name << " with type: " << regtype << std::endl;
-        LOGI("Service registered: %s with type: %s", name.c_str(), regtype.c_str());
+	    //DebugL << "Service registered: " << name << " with type: " << regtype << std::endl;
     }
 
     TXTRecordDeallocate(&txtRecord);
@@ -103,85 +178,53 @@ void MDNSClient::UnregisterService(const std::string& name, const std::string& r
     if (it != m_registerRefs.end()) {
         DNSServiceRefDeallocate(it->second);
         m_registerRefs.erase(it);
-        //DebugL << "Service unregistered: " << name << " with type: " << regtype << std::endl;
-        LOGI("Service unregistered: %s with type: %s", name.c_str(), regtype.c_str());
+	    //DebugL << "Service unregistered: " << name << " with type: " << regtype << std::endl;
     }
     else {
         //DebugL << "Service not found: " << name << " with type: " << regtype << std::endl;
-        LOGI("Service not found: %s with type: %s", name.c_str(), regtype.c_str());
     }
 }
 
 void MDNSClient::StartBrowseService(const std::string& regtype, DeviceInfoCallback callback)
 {
-    if (m_browseThreads.find(regtype) != m_browseThreads.end()) {
-        LOGE("Service discovery already running: %s", regtype.c_str());
-        //m_deviceInfoCallbacks[regtype].push_back(callback);
+    // 前一次异常数据，需要清理
+    if(m_browseContexts.find(regtype) != m_browseContexts.end() && m_browseContexts[regtype].cleanBrowseRef) {
+        CleanupBrowseContext(regtype);
+    }
+
+    auto& ctx = m_browseContexts[regtype];
+
+    if (ctx.running) {
+        //DebugL << "Service discovery already running: " << regtype << std::endl;
+        LOGI("Service discovery already running: %s", regtype.c_str());
         return;
     }
 
-    m_deviceInfoCallbacks[regtype].push_back(callback);
+    // 添加回调并设置运行标志
+    ctx.callbacks.push_back(callback);
+    ctx.running = true;
 
-    m_browseRunning[regtype] = true;
-    m_browseThreads[regtype] = std::thread([this, regtype]() {
-
+    ctx.browseThread = std::thread([this, regtype]() {
         DNSServiceErrorType errorCode;
-        DNSServiceRef serviceRef;
+        DNSServiceRef browseRef;
 
-        //svcContext由DNSServiceBrowse的BrowseCallback共用，注意Android平台需要各自创建新的context
-        ServiceContext* svcContext = new ServiceContext{ this, regtype, "", "" };
-        errorCode = DNSServiceBrowse(&serviceRef, 0, 0, regtype.c_str(), "local.", BrowseCallback, svcContext);
+        ServiceContext* svcContext = new ServiceContext{ this, regtype, "", ""};
+        errorCode = DNSServiceBrowse(&browseRef, 0, 0, regtype.c_str(), "", BrowseCallback, svcContext);
         if (errorCode != kDNSServiceErr_NoError) {
-            //ErrorL << "Error discovering service: " << errorCode << std::endl;
-            LOGE("Error discovering service: %d", errorCode);
+	        LOGI("Error discovering service: %d", errorCode);
             delete svcContext; // 发生错误时释放 ServiceContext
+            svcContext = nullptr;
+            m_browseContexts[regtype].cleanBrowseRef = true;
             return;
         }
 
-        m_browseRefs[regtype] = serviceRef;
+        m_browseContexts[regtype].serviceRef = browseRef;
         //DebugL << "Started browsing for service: " << regtype << std::endl;
         LOGI("Started browsing for service: %s", regtype.c_str());
 
-        int dns_sd_fd = DNSServiceRefSockFD(serviceRef);
-        if (dns_sd_fd == -1) {
-            LOGE("dns_sd_fd: %d", dns_sd_fd);
-            LOGE("socket file descriptor error: %s", strerror(errno));
-            DNSServiceRefDeallocate(serviceRef);
-            return;
-        }
-
-        while (m_browseRunning[regtype]) {
-#if defined(ANDROID)
+        while (m_browseContexts[regtype].running) {
             //Android上DNSServiceProcessResult无效，跳过select流程
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-#else
-            fd_set read_fds;
-            FD_ZERO(&read_fds);
-            FD_SET(dns_sd_fd, &read_fds);
-            struct timeval tv = { 1, 0 }; // 1 second timeout
-
-            int result = select(dns_sd_fd + 1, &read_fds, nullptr, nullptr, &tv);
-            if (result > 0) {
-                if (FD_ISSET(dns_sd_fd, &read_fds)) {
-                    //LOGI("Before DNSServiceProcessResult... ");
-                    errorCode = DNSServiceProcessResult(serviceRef);
-                    //LOGI("DNSServiceProcessResult  errorCode: %d", errorCode);
-                    if (errorCode != kDNSServiceErr_NoError
-                        && errorCode != kDNSServiceErr_ServiceNotRunning) {
-                        LOGE("Error processing result: %d", errorCode);
-                        break;
-                    }
-                }
-            }
-            else if (result == 0) {
-                // Timeout, continue checking browseRunning
-                continue;
-            }
-            else {
-                LOGE("Error in select: %s", strerror(errno));
-                break;
-            }
-#endif
         }
 
         if (svcContext) {
@@ -189,114 +232,118 @@ void MDNSClient::StartBrowseService(const std::string& regtype, DeviceInfoCallba
             svcContext = nullptr;
         }
 
-        std::lock_guard<std::mutex> lock(g_browseRefMutex);
-        DNSServiceRefDeallocate(m_browseRefs[regtype]);
-        m_browseRefs.erase(regtype);
-        LOGI("Service discovery thread stopped: %s", regtype.c_str());
+        //DebugL << "Service discovery Thread stopped: " << regtype << std::endl;
+        LOGI("Service discovery Thread stopped: %s", regtype.c_str());
     });
 }
 
 void MDNSClient::StopBrowseService(const std::string& regtype)
 {
-    if (m_browseRunning.find(regtype) != m_browseRunning.end()) {
-        m_browseRunning[regtype] = false;
-        {
-            std::lock_guard<std::mutex> lock(g_browseRefMutex);
-            // 关闭套接字以唤醒阻塞的 select
-            if (m_browseRefs.find(regtype) != m_browseRefs.end()) {
-                int dns_sd_fd = DNSServiceRefSockFD(m_browseRefs[regtype]);
-                if (dns_sd_fd != -1) {
-                    //LOGI("Before closesocket... dns_sd_fd: %d", dns_sd_fd);
-#if defined(WIN32)
-                    closesocket(dns_sd_fd);
-#else
-                    close(dns_sd_fd);
-#endif
-                }
+    auto it = m_browseContexts.find(regtype);
+    if (it != m_browseContexts.end()) {
+        BrowseContext& ctx = it->second;
+        ctx.running = false;
+
+        for (auto& [instanceName, resolveRef] : ctx.resolveRefs) {
+            if (resolveRef) {
+                DNSServiceRefDeallocate(resolveRef);
+                //DebugL << "Deallocated resolveRef for: " << instanceName;
             }
         }
 
-        if (m_browseThreads[regtype].joinable()) {
-            m_browseThreads[regtype].join();
+        if (ctx.serviceRef) {
+            DNSServiceRefDeallocate(ctx.serviceRef);
+            ctx.serviceRef = nullptr;
         }
-        m_browseThreads.erase(regtype);
-        m_browseRunning.erase(regtype);
-        m_deviceInfoCallbacks.erase(regtype);
+
+        if (ctx.browseThread.joinable()) {
+            ctx.browseThread.join();
+        }
+
+        m_browseContexts.erase(it);
+        //DebugL << "Service discovery stopped: " << regtype << std::endl;
         LOGI("Service discovery stopped: %s", regtype.c_str());
     }
-    else {
-        //DebugL << "Service discovery not found: " << regtype << std::endl;
-        LOGI("Service discovery not found: %s", regtype.c_str());
-    }
+	else {
+		//DebugL << "Service discovery not found: " << regtype << std::endl;
+	}
 }
 
 void MDNSClient::OnDeviceInfoCallback(const std::string& regtype, const std::string& deviceInfo)
 {
-    auto it = m_deviceInfoCallbacks.find(regtype);
-    if (it != m_deviceInfoCallbacks.end()) {
-        for (const auto& callback : it->second) {
+    auto it = m_browseContexts.find(regtype);
+    if (it != m_browseContexts.end()) {
+        for (const auto& callback : it->second.callbacks) {
             callback(deviceInfo); // Call each callback function with deviceInfo
         }
     }
     else {
-        LOGI("No callbacks found for regtype: %s",regtype.c_str());
+        //DebugL << "No callbacks found for regtype: " << regtype << std::endl;
+        LOGI("No callbacks found for regtype: %s", regtype.c_str());
     }
 }
 
 void DNSSD_API MDNSClient::BrowseCallback(
-        DNSServiceRef serviceRef,
-        DNSServiceFlags flags,
-        uint32_t interfaceIndex,
-        DNSServiceErrorType errorCode,
-        const char* serviceName,
-        const char* regtype,
-        const char* replyDomain,
-        void* context)
+    DNSServiceRef serviceRef,
+    DNSServiceFlags flags,
+    uint32_t interfaceIndex,
+    DNSServiceErrorType errorCode,
+    const char* serviceName,
+    const char* regtype,
+    const char* replyDomain,
+    void* context)
 {
-    //LOGI("Enter MDNSClient::BrowseCallback");
+    //DebugL << "Enter MDNSClient::BrowseCallback";
     if (errorCode == kDNSServiceErr_NoError) {
         ServiceContext* svcContext = static_cast<ServiceContext*>(context);
         if (flags & kDNSServiceFlagsAdd) {
-            LOGI("Discovered service: interface-%d %s.%s%s", interfaceIndex, serviceName, regtype, replyDomain);
+	        //DebugL << "Service add: " << "interface-" << interfaceIndex << " " << serviceName << "." << regtype << replyDomain;
+	        LOGI("Service add: interface-%d %s %s.%s", interfaceIndex, serviceName, regtype, replyDomain);
             svcContext->action = "add";
         }
         else {
-            LOGI("Service removed: %s.%s.%s", serviceName, regtype, replyDomain);
+            //DebugL << "Service remove: " << "interface-" << interfaceIndex << " " << serviceName << "." << regtype << replyDomain;
+            LOGI("Service remove: interface-%d %s %s.%s", interfaceIndex, serviceName, regtype, replyDomain);
             svcContext->action = "remove";
         }
 
-#if defined(ANDROID)
-        // Embedded版本DNSServiceRef每次都会malloc内存，不同于Windows等平台DNSServiceRef是共用的
-        // 在回调中最后进行释放比较合适
         DNSServiceRef resolveRef;
-        DNSServiceResolve(&resolveRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, context);
-        //LOGI("Create resolveRef address: %p", static_cast<void*>(resolveRef));
-#else
-        DNSServiceResolve(&serviceRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, context);
-            DNSServiceProcessResult(serviceRef);
-#endif
+        DNSServiceErrorType error = DNSServiceResolve(&resolveRef, 0, interfaceIndex, serviceName, regtype, replyDomain, ResolveCallback, svcContext);
+		if (error != kDNSServiceErr_NoError) {
+			//ErrorL << "Error resolving service: " << error << std::endl;
+			LOGI("Error resolving service: %d", error);
+            //出错时resolveRef为空，不需要释放
+            //DNSServiceRefDeallocate(resolveRef);
+		}
+        else {
+            svcContext->client->AddResolveRef(svcContext->regtype, serviceName, resolveRef);
+        }
     }
     else {
-        LOGE("Error discovering service: %d", errorCode);
+        //DebugL << "Error discovering service: " << errorCode << std::endl;
     }
 }
 
 void DNSSD_API MDNSClient::ResolveCallback(
-        DNSServiceRef serviceRef,
-        DNSServiceFlags flags,
-        uint32_t interfaceIndex,
-        DNSServiceErrorType errorCode,
-        const char* fullname,
-        const char* hosttarget,
-        uint16_t port,
-        uint16_t txtLen,
-        const unsigned char* txtRecord,
-        void* context)
+    DNSServiceRef serviceRef,
+    DNSServiceFlags flags,
+    uint32_t interfaceIndex,
+    DNSServiceErrorType errorCode,
+    const char* fullname,
+    const char* hosttarget,
+    uint16_t port,
+    uint16_t txtLen,
+    const unsigned char* txtRecord,
+    void* context)
 {
-    LOGI("Enter MDNSClient::ResolveCallback");
     ServiceContext* svcContext = static_cast<ServiceContext*>(context);
+    MDNSClient* client = svcContext->client;
     if (errorCode == kDNSServiceErr_NoError) {
-        MDNSClient* client = svcContext->client;
+        if (client == nullptr) {
+            //DebugL << "client == nullptr ";
+            return;
+        }
+
         std::string jsonTxtRecord = client->parseTXTRecordToJson(txtRecord, txtLen);
 
         std::string fullServiceName = fullname;
@@ -306,83 +353,65 @@ void DNSSD_API MDNSClient::ResolveCallback(
 
         std::string serviceType = fullServiceName.substr(start, end - start);
 
-        LOGI("ResolveCallback TXTRecord: %s", jsonTxtRecord.c_str());
-        // 保存设备信息
         client->m_deviceInfos[fullname] = { jsonTxtRecord, ntohs(port) };
 
         // 更新 ServiceContext 的 fullname
         svcContext->fullname = fullname;
 
-#if defined(ANDROID)
-        // Embedded版本DNSServiceRef每次都会malloc内存，不同于Windows等平台DNSServiceRef是共用的
-        // 在回调中最后进行释放比较合适
-        DNSServiceRef addressRef;
+		DNSServiceRef addressRef;
+        ServiceContext* newSvcContext = new ServiceContext{ client, svcContext->regtype, fullname, svcContext->action };
 
-        //因为不是Windows平台这种顺序执行，重新创建一个新的上下文
-        ServiceContext* newSvcContext = new ServiceContext{ client, svcContext->regtype, fullname, svcContext->action};
-#endif
         // 解析 IP 地址
         DNSServiceErrorType addrInfoError = DNSServiceGetAddrInfo(
-#if defined(ANDROID)
-                &addressRef,
-#else
-                &serviceRef,
-#endif
-                0, // flags
-                interfaceIndex,
-                kDNSServiceProtocol_IPv4, // 仅解析 IPv4 地址
-                hosttarget,
-                AddrInfoCallback,
-#if defined(ANDROID)
-                newSvcContext // 使用独立的上下文
-#else
-                svcContext // 使用相同的上下文
-#endif
+            &addressRef,
+			0, // flags
+            interfaceIndex,
+            kDNSServiceProtocol_IPv4, // 仅解析 IPv4 地址
+            hosttarget,
+            AddrInfoCallback,
+            newSvcContext // 使用独立的上下文
         );
 
         if (addrInfoError != kDNSServiceErr_NoError) {
-            LOGE("Error getting address info: %d", addrInfoError);
-        }
-        else {
-            DNSServiceProcessResult(serviceRef);
+            //DebugL << "Error getting address info: " << addrInfoError;
+            LOGI("Error getting address info: %d", addrInfoError);
+            delete newSvcContext;
+            newSvcContext = nullptr;
         }
     }
     else {
-        LOGE("Error resolving service: %d", errorCode);
+        //DebugL << "Error resolving service: " << errorCode;
     }
 
-#if defined(ANDROID)
-    //释放DNSServiceResolve申请的DNSServiceRef内存
-    //LOGI("Release resolveRef...");
-    DNSServiceRefDeallocate(serviceRef);
-#endif
+    std::string instanceName = fullname;
+    size_t pos = instanceName.find(svcContext->regtype);
+    if (pos > 1) {
+        instanceName = instanceName.substr(0, pos - 1);
+    }
+    client->RemoveResolveRef(svcContext->regtype, instanceName);
 }
 
 void DNSSD_API MDNSClient::AddrInfoCallback(
-        DNSServiceRef serviceRef,
-        DNSServiceFlags flags,
-        uint32_t interfaceIndex,
-        DNSServiceErrorType errorCode,
-        const char* hostname,
-        const struct sockaddr* address,
-        uint32_t ttl,
-        void* context)
+    DNSServiceRef serviceRef,
+    DNSServiceFlags flags,
+    uint32_t interfaceIndex,
+    DNSServiceErrorType errorCode,
+    const char* hostname,
+    const struct sockaddr* address,
+    uint32_t ttl,
+    void* context)
 {
-    LOGI("Enter MDNSClient::AddrInfoCallback");
+    // 使用独立的上下文
     ServiceContext* svcContext = static_cast<ServiceContext*>(context);
     if (errorCode == kDNSServiceErr_NoError) {
         char ipStr[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(((struct sockaddr_in*)address)->sin_addr), ipStr, INET_ADDRSTRLEN);
 
-        LOGI("Resolved IP address: %s", ipStr);
-
         MDNSClient* client = svcContext->client;
         if (client == nullptr) {
-            LOGI("client == nullptr ");
+            //DebugL << "client == nullptr ";
             return;
         }
-
-        LOGI("AddrInfoCallback svcContext->fullname: %s", svcContext->fullname.c_str());
 
         // 找到当前解析的设备信息
         auto it = client->m_deviceInfos.find(svcContext->fullname);
@@ -394,7 +423,7 @@ void DNSSD_API MDNSClient::AddrInfoCallback(
             if (pos > 1) {
                 deviceName = deviceName.substr(0, pos-1);
             }
-
+           
             // 解析后的 JSON 字符串
             rapidjson::Document document;
             document.Parse(deviceInfo.jsonTxtRecord.c_str());
@@ -410,36 +439,37 @@ void DNSSD_API MDNSClient::AddrInfoCallback(
             document.AddMember(portKey, portValue, allocator);
 
             document.AddMember("name", rapidjson::StringRef(deviceName.c_str()),
-                               document.GetAllocator());
+                document.GetAllocator());
             document.AddMember("protol", rapidjson::StringRef(svcContext->regtype.c_str()),
-                               document.GetAllocator());
+                document.GetAllocator());
             document.AddMember("action", rapidjson::StringRef(svcContext->action.c_str()),
-                               document.GetAllocator());
+                document.GetAllocator());
+
             // 将 JSON 对象转换为字符串
             rapidjson::StringBuffer buffer;
             rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
             document.Accept(writer);
             std::string updatedJsonTxtRecord = buffer.GetString();
 
-            LOGI("OnDeviceInfoCallback updatedJsonTxtRecord : %s", updatedJsonTxtRecord.c_str());
+	        //DebugL << "OnDeviceInfoCallback updatedJsonTxtRecord : " << updatedJsonTxtRecord;
+	        //DebugL << "OnDeviceInfoCallback updatedJsonTxtRecord name: " << deviceName << " action: " << svcContext->action;
+	        LOGI("OnDeviceInfoCallback updatedJsonTxtRecord name: %s action: %s", deviceName.c_str(),  svcContext->action.c_str());
 
             client->OnDeviceInfoCallback(svcContext->regtype, updatedJsonTxtRecord);
         }
     }
     else {
-        LOGE("Error in address info callback: %d", errorCode);
+	    //DebugL << "Error in address info callback: " << errorCode << std::endl;
     }
-#if defined(ANDROID)
-    //释放DNSServiceGetAddrInfo申请的DNSServiceRef内存
-    //LOGI("Release addressRef...");
+
+    // 释放回调前DNSServiceRef addressRef;
     DNSServiceRefDeallocate(serviceRef);
 
-    if(svcContext){
+    //用完后释放独立上下文
+    if (svcContext) {
         delete svcContext;
         svcContext = nullptr;
     }
-
-#endif
 }
 
 // 解析TXTRecord
@@ -468,4 +498,67 @@ std::string MDNSClient::parseTXTRecordToJson(const unsigned char* txtRecord, uin
     doc.Accept(writer);
 
     return buffer.GetString();
+}
+
+std::string MDNSClient::ExtractInstanceName(const std::string& fullname) {
+    std::string result;
+    size_t i = 0;
+    while (i < fullname.length()) {
+        if (fullname[i] == '\\' && i + 3 < fullname.length() &&
+            isdigit(fullname[i + 1]) && isdigit(fullname[i + 2]) && isdigit(fullname[i + 3])) {
+            // 提取三位数字并转换为字符
+            int val = std::stoi(fullname.substr(i + 1, 3));
+            result += static_cast<char>(val);
+            i += 4;
+        }
+        else {
+            result += fullname[i];
+            ++i;
+        }
+    }
+
+    return result;
+}
+
+std::string MDNSClient::Utf8ToAnsi(const std::string& utf8Str) {
+#if defined(WIN32)
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, nullptr, 0);
+    std::wstring wideStr(wideLen, 0);
+    MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, &wideStr[0], wideLen);
+
+    int ansiLen = WideCharToMultiByte(CP_ACP, 0, wideStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+    std::string ansiStr(ansiLen, 0);
+    WideCharToMultiByte(CP_ACP, 0, wideStr.c_str(), -1, &ansiStr[0], ansiLen, nullptr, nullptr);
+
+    ansiStr.pop_back(); // 去掉末尾的 \0
+    return ansiStr;
+#else
+    return utf8Str; //TODO: 其他平台未实现
+#endif
+}
+
+void MDNSClient::CleanupBrowseContext(const std::string& regtype)
+{
+    auto it = m_browseContexts.find(regtype);
+    if (it != m_browseContexts.end()) {
+        BrowseContext& ctx = it->second;
+        ctx.running = false;
+
+        if (ctx.serviceRef) {
+            DNSServiceRefDeallocate(ctx.serviceRef);
+            ctx.serviceRef = nullptr;
+        }
+
+        for (auto& [_, resolveRef] : ctx.resolveRefs) {
+            if (resolveRef) {
+                DNSServiceRefDeallocate(resolveRef);
+            }
+        }
+
+        if (ctx.browseThread.joinable()) {
+            ctx.browseThread.join();
+        }
+
+        m_browseContexts.erase(it);
+    }
 }

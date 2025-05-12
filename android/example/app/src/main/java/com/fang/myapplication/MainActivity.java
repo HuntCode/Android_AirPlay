@@ -52,6 +52,10 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
     private boolean mIsStart = false;
     private byte[] mMacAddress;
 
+    private Button mBtnStopServer;
+    private Button mBtnStartBrowseService;
+    private Button mBtnStopBrowseService;
+
     private String mDeviceName;
     private int mDeviceTail = 1;
 
@@ -74,9 +78,17 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         getSystemService(Context.NSD_SERVICE);
-        mBtnControl = findViewById(R.id.btn_control);
+        mBtnControl = findViewById(R.id.btn_startServer);
         mTxtDevice = findViewById(R.id.txt_device);
         mBtnControl.setOnClickListener(this);
+
+        mBtnStopServer = findViewById(R.id.btn_stopServer);
+        mBtnStopServer.setOnClickListener(this);
+        mBtnStartBrowseService = findViewById(R.id.btn_startBrowse);
+        mBtnStartBrowseService.setOnClickListener(this);
+        mBtnStopBrowseService = findViewById(R.id.btn_stopBrowse);
+        mBtnStopBrowseService.setOnClickListener(this);
+
         mTextureView = findViewById(R.id.surface);
         mRaopServer = new RaopServer(MainActivity.this);
         mMacAddress = NetUtils.getLocalMacAddress();
@@ -94,16 +106,21 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
     @Override
     public void onClick(View v) {
         switch (v.getId()) {
-            case R.id.btn_control: {
-                if (!mIsStart) {
-                    startServer();
-                    mTxtDevice.setText("设备名称:" + mDeviceName);
-                } else {
-                    stopServer();
-                    mTxtDevice.setText("未启动");
-                }
-                mIsStart = !mIsStart;
-                mBtnControl.setText(mIsStart ? "结束" : "开始");
+            case R.id.btn_startServer: {
+                startServer();
+                break;
+            }
+            case R.id.btn_stopServer: {
+                mRaopServer.stopBrowseService();
+                stopServer();
+                break;
+            }
+            case R.id.btn_startBrowse:{
+                mRaopServer.startBrowseService();
+                break;
+            }
+            case R.id.btn_stopBrowse:{
+                mRaopServer.stopBrowseService();
                 break;
             }
         }

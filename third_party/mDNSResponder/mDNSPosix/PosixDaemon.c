@@ -56,6 +56,12 @@ extern int daemon(int, int);
 #include "uds_daemon.h"
 #include "PlatformCommon.h"
 
+#include <android/log.h>
+
+#define LOG_TAG "WLNativeLog"
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
 #ifndef MDNS_USERNAME
 #define MDNS_USERNAME "nobody"
 #endif
@@ -69,6 +75,8 @@ static CacheEntity gRRCache[RR_CACHE_SIZE];
 static mDNS_PlatformSupport PlatformStorage;
 
 int stopNow = 0;
+
+int isStart = 0;
 
 mDNSlocal void mDNS_StatusCallback(mDNS *const m, mStatus result)
 	{
@@ -253,6 +261,7 @@ void* DNSServiceThread(void* arg)
     (void)arg;  // 避免未使用参数的警告
     mStatus err;
 
+    LOGI("%s starting", mDNSResponderVersionString);
     LogMsg("%s starting", mDNSResponderVersionString);
 
     err = mDNS_Init(&mDNSStorage, &PlatformStorage, gRRCache, RR_CACHE_SIZE, mDNS_Init_AdvertiseLocalAddresses,
@@ -265,9 +274,13 @@ void* DNSServiceThread(void* arg)
 
     err = MainLoop(&mDNSStorage);
 
+    LOGI("%s stopping", mDNSResponderVersionString);
+
     LogMsg("%s stopping", mDNSResponderVersionString);
 
     mDNS_Close(&mDNSStorage);
+
+    isStart = 0;
 
     #if MDNS_DEBUGMSGS > 0
     printf("mDNSResponder exiting normally with %ld\n", err);
@@ -278,6 +291,9 @@ void* DNSServiceThread(void* arg)
 
 int DNSServiceStart()
 {
+    if(isStart)
+        return 0;
+
     pthread_t dns_service_thread;
     int thread_create_result;
 
@@ -287,6 +303,9 @@ int DNSServiceStart()
     {
         perror("Failed to create DNS service thread");
         return thread_create_result;
+    }
+    else{
+        isStart = 1;
     }
 
     // 分离线程，使其在终止时自行清理资源

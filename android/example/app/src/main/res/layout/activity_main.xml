@@ -10,19 +10,42 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
     <Button
-        android:id="@+id/btn_control"
+        android:id="@+id/btn_startServer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="开始"
+        android:text="打开服务"
         android:layout_marginLeft="15dp"/>
     <TextView
         android:id="@+id/txt_device"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="未启动"
-        android:layout_toRightOf="@id/btn_control"
+        android:layout_toRightOf="@id/btn_startServer"
         android:layout_marginLeft="15dp"
-        android:layout_alignBaseline="@id/btn_control"
+        android:layout_alignBaseline="@id/btn_startServer"
         android:textColor="#000"
         />
+    <Button
+        android:id="@+id/btn_stopServer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="关闭服务"
+        android:layout_toRightOf="@id/txt_device"
+        android:layout_marginLeft="15dp"/>
+
+    <Button
+        android:id="@+id/btn_startBrowse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="开始搜索"
+        android:layout_below="@id/btn_startServer"
+        android:layout_marginLeft="15dp"/>
+    <Button
+        android:id="@+id/btn_stopBrowse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="停止搜索"
+        android:layout_alignTop="@+id/btn_startBrowse"
+        android:layout_toRightOf="@id/btn_startBrowse"
+        android:layout_marginLeft="15dp"/>
 </RelativeLayout>

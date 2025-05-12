@@ -27,6 +27,7 @@
 #include "mDNSEmbeddedAPI.h"		// The interface we're building on top of
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "mDNSPosix.h"
 
 extern mDNS mDNSStorage;		// We need to pass the address of this storage to the lower-layer functions
 
@@ -363,6 +364,9 @@ static void DNSServiceBrowseDispose(mDNS_DirectOP *op)
 	mDNS_DirectOP_Browse *x = (mDNS_DirectOP_Browse*)op;
 	//LogMsg("DNSServiceBrowseDispose");
 	mDNS_StopBrowse(&mDNSStorage, &x->q);
+
+    //android上网卡切换回调，bind无权限，停止搜索时手动刷新网卡
+    mDNSPlatformPosixRefreshInterfaceList(&mDNSStorage);
 	mDNSPlatformMemFree(x);
 	}
 

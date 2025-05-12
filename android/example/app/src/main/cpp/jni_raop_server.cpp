@@ -126,11 +126,11 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
 
     if(!ServerStart){
         DNSServiceStart();
-        sleep(2);
+        //sleep(2);
         ServerStart = true;
     }
 
-    HHRegisterService("abcd");
+    //HHRegisterService("abcd");
 
     //int ret = HHAirPlayStart("HelloAirplay202405112121");
     env->ReleaseByteArrayElements(hwAddr, hw_addr, 0);
@@ -151,10 +151,20 @@ Java_com_fang_myapplication_RaopServer_stop(JNIEnv* env, jobject object, jlong o
 //    raop_server_destroy(raop_server);
 //    env->DeleteGlobalRef(obj);
 
-    HHUnRegisterService();
+    //HHUnRegisterService();
 
     if(ServerStart){
         DNSServiceStop();
         ServerStart = false;
     }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_fang_myapplication_RaopServer_startBrowse(JNIEnv* env, jobject object) {
+    HHStartBrowseService();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_fang_myapplication_RaopServer_stopBrowse(JNIEnv* env, jobject object) {
+    HHStopBrowseService();
 }

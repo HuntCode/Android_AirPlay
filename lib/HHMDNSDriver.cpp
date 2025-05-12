@@ -2,7 +2,7 @@
 //
 
 #include <iostream>
-#include "MDNSClient.h"
+#include "MDNSClient_old.h"
 #include "HHMDNSDriver.h"
 #include "airplay.h"
 
@@ -43,15 +43,15 @@ int HHRegisterService(const char* deviceName)
     })";
 
     // for test
-    mdnsClient->RegisterService("Service1", "_hhclient._tcp", 1111, jsonString1);
-    mdnsClient->RegisterService("Service2", "_hhclient._tcp", 2222, jsonString2);
-    mdnsClient->RegisterService("Service3", "_hhclient._tcp", 3333, jsonString1);
-    mdnsClient->RegisterService("Service4", "_hhclient._tcp", 4444, jsonString2);
-    mdnsClient->RegisterService("Service5", "_hhclient._tcp", 5555, jsonString1);
-    mdnsClient->RegisterService("Service6", "_hhclient._tcp", 6666, jsonString2);
+    //mdnsClient->RegisterService("Service1", "_hhclient._tcp", 1111, jsonString1);
+    //mdnsClient->RegisterService("Service2", "_hhclient._tcp", 2222, jsonString2);
+    //mdnsClient->RegisterService("Service3", "_hhclient._tcp", 3333, jsonString1);
+    //mdnsClient->RegisterService("Service4", "_hhclient._tcp", 4444, jsonString2);
+    //mdnsClient->RegisterService("Service5", "_hhclient._tcp", 5555, jsonString1);
+    //mdnsClient->RegisterService("Service6", "_hhclient._tcp", 6666, jsonString2);
 
-    mdnsClient->StartBrowseService("_hhclient._tcp", [](const std::string& jsonTxtRecord) {
-        std::cout << "Discovered JSON TXT Record: " << jsonTxtRecord << std::endl;
+    mdnsClient->StartBrowseService("_airplay._tcp", [](const std::string& jsonTxtRecord) {
+        //std::cout << "Discovered JSON TXT Record: " << jsonTxtRecord << std::endl;
         LOGI("Discovered JSON TXT Record: %s", jsonTxtRecord.c_str());
     });
 
@@ -74,4 +74,16 @@ int HHUnRegisterService()
     mdnsClient->StopBrowseService("_hhclient._tcp");
 
     return 0;
+}
+
+void HHStartBrowseService()
+{
+    mdnsClient->StartBrowseService("_airplay._tcp", [](const std::string& jsonTxtRecord) {
+        //LOGI("Discovered JSON TXT Record: %s", jsonTxtRecord.c_str());
+    });
+}
+
+void HHStopBrowseService()
+{
+    mdnsClient->StopBrowseService("_airplay._tcp");
 }

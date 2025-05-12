@@ -27,4 +27,8 @@ HHMDNS_API int HHRegisterService(const char* deviceName);
 
 HHMDNS_API int HHUnRegisterService();
 
+HHMDNS_API void HHStartBrowseService();
+
+HHMDNS_API void HHStopBrowseService();
+
 #endif // HH_AIRPLAY_H
