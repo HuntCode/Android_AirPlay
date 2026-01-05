@@ -105,24 +105,16 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
     @SuppressLint("SetTextI18n")
     @Override
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.btn_startServer: {
-                startServer();
-                break;
-            }
-            case R.id.btn_stopServer: {
-                mRaopServer.stopBrowseService();
-                stopServer();
-                break;
-            }
-            case R.id.btn_startBrowse:{
-                mRaopServer.startBrowseService();
-                break;
-            }
-            case R.id.btn_stopBrowse:{
-                mRaopServer.stopBrowseService();
-                break;
-            }
+        int id = v.getId();
+        if (id == R.id.btn_startServer) {
+            startServer();
+        } else if (id == R.id.btn_stopServer) {
+            mRaopServer.stopBrowseService();
+            stopServer();
+        } else if (id == R.id.btn_startBrowse) {
+            mRaopServer.startBrowseService();
+        } else if (id == R.id.btn_stopBrowse) {
+            mRaopServer.stopBrowseService();
         }
     }
 

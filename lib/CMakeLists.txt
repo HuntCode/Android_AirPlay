@@ -34,8 +34,8 @@ include_directories(
         ${CMAKE_CURRENT_SOURCE_DIR}/lib/playfair
         ${CMAKE_CURRENT_SOURCE_DIR}/lib
         ${CMAKE_CURRENT_SOURCE_DIR}/renderers
-        ${distribution_DIR}/plist/include
-        ${distribution_DIR}/openssl/include
+        ${distribution_DIR}/plist/${ANDROID_ABI}/include
+        ${distribution_DIR}/openssl/${ANDROID_ABI}/include
         ${RAPIDJSON_LIB_PATH}/include
         )
 
@@ -104,19 +104,19 @@ add_library(plist SHARED IMPORTED)
 set_target_properties(
         plist
         PROPERTIES
-        IMPORTED_LOCATION ${distribution_DIR}/plist/lib/${ANDROID_ABI}/libplist.so)
+        IMPORTED_LOCATION ${distribution_DIR}/plist/${ANDROID_ABI}/lib/libplist.so)
 
 add_library(crypto STATIC IMPORTED)
 set_target_properties(
         crypto
         PROPERTIES
-        IMPORTED_LOCATION ${distribution_DIR}/openssl/lib/${ANDROID_ABI}/libcrypto.a)
+        IMPORTED_LOCATION ${distribution_DIR}/openssl/${ANDROID_ABI}/lib/libcrypto.a)
 
 add_library(ssl STATIC IMPORTED)
 set_target_properties(
         ssl
         PROPERTIES
-        IMPORTED_LOCATION ${distribution_DIR}/openssl/lib/${ANDROID_ABI}/libssl.a)
+        IMPORTED_LOCATION ${distribution_DIR}/openssl/${ANDROID_ABI}/lib/libssl.a)
 
 #add_library(dns_sd SHARED IMPORTED)
 #set_target_properties(
